@@ -1,0 +1,14 @@
+[package]
+name = "msfs"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+msfs_derive = { path = "../msfs_derive" }
+futures = "0.3"
+libc = "0.2"
+
+[build-dependencies]
+bindgen = "0.72"
+msfs_sdk = { path = "../msfs_sdk" }
+cc = "1.0"
