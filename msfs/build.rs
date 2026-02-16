@@ -70,59 +70,5 @@
         println!("cargo:rustc-link-lib=user32");
         println!("cargo:rustc-link-lib=ws2_32");
         println!("cargo:rustc-link-lib=shell32");
-
-        // If the nanovg-shim feature is enabled, build the bundled CMake shim and copy the DLL
-        // next to produced binaries (target/{profile}).
-        if std::env::var_os("CARGO_FEATURE_NANOVG_SHIM").is_some() {
-            let target = std::env::var("TARGET").unwrap();
-            let is_windows = target.contains("windows");
-
-            if is_windows {
-                println!("cargo:rerun-if-changed=../nvg_shim/CMakeLists.txt");
-                println!("cargo:rerun-if-changed=../nvg_shim/shim_impl.cpp");
-                println!("cargo:rerun-if-changed=../nvg_shim/nvg/nanovg.h");
-                println!("cargo:rerun-if-changed=../nvg_shim/nvg/nanovg.cpp");
-                println!("cargo:rerun-if-changed=../nvg_shim/nvg/nanovg_sw.h");
-
-                let manifest_dir =
-                    std::path::PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
-                let project_root = manifest_dir
-                    .parent()
-                    .expect("msfs crate must live under workspace root");
-
-                let out_dir = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap());
-
-                // Run the helper PowerShell script.
-                let script = manifest_dir.join("build_nvg_shim.ps1");
-                let status = std::process::Command::new("pwsh")
-                    .arg("-NoProfile")
-                    .arg("-ExecutionPolicy")
-                    .arg("Bypass")
-                    .arg("-File")
-                    .arg(&script)
-                    .arg("-ProjectRoot")
-                    .arg(project_root)
-                    .arg("-OutDir")
-                    .arg(&out_dir)
-                    .status()
-                    .expect("failed to execute build_nvg_shim.ps1");
-
-                if !status.success() {
-                    panic!("failed to build nvg_shim (cmake)");
-                }
-
-                // Copy the produced DLL into target/{profile} so examples can load it without extra setup.
-                // This mirrors typical MSVC runtime loading behavior.
-                let profile = std::env::var("PROFILE").unwrap_or_else(|_| "debug".to_string());
-                let target_dir = project_root.join("target").join(&profile);
-                std::fs::create_dir_all(&target_dir).ok();
-
-                let built_dll = out_dir.join("nanovg_shim.dll");
-                if built_dll.exists() {
-                    let dest = target_dir.join("nanovg_shim.dll");
-                    let _ = std::fs::copy(&built_dll, &dest);
-                }
-            }
-        }
     }
 }

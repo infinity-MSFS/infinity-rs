@@ -1,75 +1,100 @@
-﻿use crate::sys::*;
-use std::mem::MaybeUninit;
-use std::os::raw::c_char;
+﻿pub mod a_var;
+pub mod l_var;
 
-#[deprecated(note="Not implemented yet")]
-pub struct MsfsAVar {
-    id: FsAVarId,
-    unit_id: FsUnitId,
+use crate::sys::*;
+
+use std::{ffi::CString, marker::PhantomData, mem::MaybeUninit, os::raw::c_char};
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum VarError {
+    Fs(FsVarError),
+    Nul(std::ffi::NulError),
 }
 
-#[deprecated(note="Not implemented yet")]
-pub struct MsfsBVar {
-    id: FsBVarId,
-    unit_id: FsUnitId,
+impl From<std::ffi::NulError> for VarError {
+    fn from(e: std::ffi::NulError) -> Self {
+        VarError::Nul(e)
+    }
 }
 
-#[deprecated(note="Not implemented yet")]
-pub struct MsfsEVar {
-    id: FsEVarId,
-    unit_id: FsUnitId,
+pub type VarResult<T> = Result<T, VarError>;
+
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct UnitId(pub FsUnitId);
+
+impl UnitId {
+    pub fn from_str(unit: &str) -> VarResult<Self> {
+        let unit_c = CString::new(unit)?;
+        let id = unsafe { fsVarsGetUnitId(unit_c.as_ptr() as *const c_char) };
+        Ok(UnitId(id))
+    }
 }
 
-pub struct MsfsLVar {
-    id: FsLVarId,
-    unit_id: FsUnitId,
+pub trait VarKind {
+    type Id: Copy;
+
+    fn register(name: *const c_char) -> Self::Id;
+
+    fn get(id: Self::Id, unit: FsUnitId, out: *mut f64) -> FsVarError;
+
+    fn set(id: Self::Id, unit: FsUnitId, value: f64) -> FsVarError;
+
+    fn can_set() -> bool {
+        true
+    }
 }
 
-#[deprecated(note="Not implemented yet")]
-pub struct MsfsIVar {
-    id: FsIVarId,
-    unit_id: FsUnitId,
+#[derive(Debug, Copy, Clone)]
+pub struct Var<K: VarKind> {
+    id: K::Id,
+    unit: UnitId,
+    _k: PhantomData<K>,
 }
 
-#[deprecated(note="Not implemented yet")]
-pub struct MsfsOVar {
-    id: FsOVarId,
-    unit_id: FsUnitId,
-}
-
-#[deprecated(note="Not implemented yet")]
-pub struct MsfsZVar {
-    id: FsZVarId,
-    unit_id: FsUnitId,
-}
-
-impl MsfsLVar {
-    /// Create a new LVar with the given name and unit. Should be called once during initialization.
-    pub fn new(name: &str, unit: &str) -> Self {
-        let name_cstr = std::ffi::CString::new(name).unwrap();
-        let unit_cstr = std::ffi::CString::new(unit).unwrap();
-        let name_ptr: *const c_char = name_cstr.as_ptr();
-        let unit_ptr: *const c_char = unit_cstr.as_ptr();
-        let id = unsafe { fsVarsRegisterLVar(name_ptr) };
-        let unit_id = unsafe { fsVarsGetUnitId(unit_ptr) };
-        MsfsLVar { id, unit_id }
+impl<K: VarKind> Var<K> {
+    pub fn new(name: &str, unit: &str) -> VarResult<Self> {
+        let name_c = CString::new(name)?;
+        let unit = UnitId::from_str(unit)?;
+        let id = K::register(name_c.as_ptr() as *const c_char);
+        Ok(Self {
+            id,
+            unit,
+            _k: PhantomData,
+        })
     }
 
-    /// Set the value of the LVar. Can be called anytime after creation.
-    pub fn set_value(&self, value: f64) {
-        unsafe {
-            fsVarsLVarSet(self.id, self.unit_id, value);
-        }
-    }
-
-    /// Get the value of the LVar. Can be called anytime after creation.
-    pub fn get_value(&self) -> Option<f64> {
-        let mut result = MaybeUninit::<f64>::uninit();
-        let err = unsafe { fsVarsLVarGet(self.id, self.unit_id, result.as_mut_ptr()) };
+    #[inline]
+    pub fn get(&self) -> VarResult<f64> {
+        let mut out = MaybeUninit::<f64>::uninit();
+        let err = K::get(self.id, self.unit.0, out.as_mut_ptr());
         if err == FsVarError_FS_VAR_ERROR_NONE {
-            Some(unsafe { result.assume_init() })
+            Ok(unsafe { out.assume_init() })
         } else {
-            None
+            Err(VarError::Fs(err))
         }
+    }
+
+    #[inline]
+    pub fn set(&self, value: f64) -> VarResult<()> {
+        if !K::can_set() {
+            return Err(VarError::Fs(FsVarError_FS_VAR_ERROR_NOT_SUPPORTED));
+        }
+        let err = unsafe { K::set(self.id, self.unit.0, value) };
+        if err == FsVarError_FS_VAR_ERROR_NONE {
+            Ok(())
+        } else {
+            Err(VarError::Fs(err))
+        }
+    }
+
+    #[inline]
+    pub fn unit(&self) -> UnitId {
+        self.unit
+    }
+
+    #[inline]
+    pub fn raw_id(&self) -> K::Id {
+        self.id
     }
 }
