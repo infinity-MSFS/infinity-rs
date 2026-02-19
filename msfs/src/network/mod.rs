@@ -1,9 +1,9 @@
 use crate::sys::*;
 use std::{
+    cell::RefCell,
     collections::HashMap,
     ffi::CString,
     os::raw::{c_char, c_void},
-    sync::{LazyLock, Mutex}, // might not work in wasm, but we'll see
 };
 
 #[derive(Debug)]
@@ -27,10 +27,15 @@ pub struct HttpResponse {
     pub data: Vec<u8>,
 }
 
-type Handler = Box<dyn FnOnce(HttpResponse) + Send + 'static>;
+type Handler = Box<dyn FnOnce(HttpResponse) + 'static>;
 
-static HANDLERS: LazyLock<Mutex<HashMap<FsNetworkRequestId, Handler>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
+thread_local! {
+    static HANDLERS: RefCell<HashMap<FsNetworkRequestId, Handler>> =
+        RefCell::new(HashMap::new());
+
+    static PARAMS: RefCell<HashMap<FsNetworkRequestId, OwnedFfiParams>> =
+        RefCell::new(HashMap::new());
+}
 
 extern "C" fn http_trampoline(
     request_id: FsNetworkRequestId,
@@ -55,57 +60,39 @@ extern "C" fn http_trampoline(
 
     drop_params(request_id);
 
-    let handler = HANDLERS
-        .lock()
-        .ok()
-        .and_then(|mut map| map.remove(&request_id));
+    let handler = HANDLERS.with(|m| m.borrow_mut().remove(&request_id));
     if let Some(h) = handler {
         h(resp);
     }
 }
 
-#[derive(Default)]
-pub struct HttpParams {
-    pub headers: Vec<String>,
-    pub post_field: Option<String>,
-    pub body: Vec<u8>,
-}
-
-impl HttpParams {
-    fn into_ffi(self) -> NetResult<OwnedFfiParams> {
-        OwnedFfiParams::new(self)
-    }
-}
-
 struct OwnedFfiParams {
+    url: CString,
     _post_field: Option<CString>,
     _headers: Vec<CString>,
-    header_ptrs: Vec<*mut c_char>,
-    body: Vec<u8>,
+    _header_ptrs: Vec<*mut c_char>,
+    _body: Vec<u8>,
     ffi: FsNetworkHttpRequestParam,
 }
 
-// This struct is only used to keep owned allocations alive until the MSFS
-// networking request completes. The raw pointers inside `ffi` and `header_ptrs`
-// point into memory owned by this struct and are not mutated after construction.
-//
-// MSFS may complete requests from another thread; storing these in a global
-// mutex requires `Send`.
 unsafe impl Send for OwnedFfiParams {}
 
 impl OwnedFfiParams {
-    fn new(p: HttpParams) -> NetResult<Self> {
+    fn new(url: &str, p: HttpParams) -> NetResult<Self> {
+        let url_c = CString::new(url)?;
+
         let post = match p.post_field {
             Some(s) => Some(CString::new(s)?),
             None => None,
         };
 
-        let mut headers_cs = Vec::with_capacity(p.headers.len());
-        for h in p.headers {
-            headers_cs.push(CString::new(h)?);
-        }
+        let mut headers_cs: Vec<CString> = p
+            .headers
+            .into_iter()
+            .map(CString::new)
+            .collect::<Result<_, _>>()?;
 
-        let mut headers_ptrs: Vec<*mut c_char> = headers_cs
+        let mut header_ptrs: Vec<*mut c_char> = headers_cs
             .iter()
             .map(|c| c.as_ptr() as *mut c_char)
             .collect();
@@ -115,12 +102,12 @@ impl OwnedFfiParams {
                 .as_ref()
                 .map(|c| c.as_ptr() as *mut c_char)
                 .unwrap_or(std::ptr::null_mut()),
-            headerOptions: if headers_ptrs.is_empty() {
+            headerOptions: if header_ptrs.is_empty() {
                 std::ptr::null_mut()
             } else {
-                headers_ptrs.as_mut_ptr()
+                header_ptrs.as_mut_ptr()
             },
-            headerOptionsSize: headers_ptrs.len() as u32,
+            headerOptionsSize: header_ptrs.len() as u32,
             data: if p.body.is_empty() {
                 std::ptr::null_mut()
             } else {
@@ -130,17 +117,37 @@ impl OwnedFfiParams {
         };
 
         Ok(Self {
+            url: url_c,
             _post_field: post,
             _headers: headers_cs,
-            header_ptrs: headers_ptrs,
-            body: p.body,
+            _header_ptrs: header_ptrs,
+            _body: p.body,
             ffi,
         })
     }
 
-    fn as_mut_ptr(&mut self) -> *mut FsNetworkHttpRequestParam {
+    fn url_ptr(&self) -> *const c_char {
+        self.url.as_ptr()
+    }
+
+    fn ffi_ptr(&mut self) -> *mut FsNetworkHttpRequestParam {
         &mut self.ffi as *mut _
     }
+}
+
+fn keep_params_alive(id: FsNetworkRequestId, params: OwnedFfiParams) {
+    PARAMS.with(|m| m.borrow_mut().insert(id, params));
+}
+
+fn drop_params(id: FsNetworkRequestId) {
+    PARAMS.with(|m| m.borrow_mut().remove(&id));
+}
+
+#[derive(Default)]
+pub struct HttpParams {
+    pub headers: Vec<String>,
+    pub post_field: Option<String>,
+    pub body: Vec<u8>,
 }
 
 pub enum Method {
@@ -153,28 +160,27 @@ pub fn http_request(
     method: Method,
     url: &str,
     params: HttpParams,
-    on_done: impl FnOnce(HttpResponse) + Send + 'static,
+    on_done: impl FnOnce(HttpResponse) + 'static,
 ) -> NetResult<FsNetworkRequestId> {
-    let url_c = CString::new(url)?;
-    let mut owned = params.into_ffi()?;
+    let mut owned = OwnedFfiParams::new(url, params)?;
 
     let id = unsafe {
         match method {
             Method::Get => fsNetworkHttpRequestGet(
-                url_c.as_ptr(),
-                owned.as_mut_ptr(),
+                owned.url_ptr(),
+                owned.ffi_ptr(),
                 Some(http_trampoline),
                 std::ptr::null_mut(),
             ),
             Method::Post => fsNetworkHttpRequestPost(
-                url_c.as_ptr(),
-                owned.as_mut_ptr(),
+                owned.url_ptr(),
+                owned.ffi_ptr(),
                 Some(http_trampoline),
                 std::ptr::null_mut(),
             ),
             Method::Put => fsNetworkHttpRequestPut(
-                url_c.as_ptr(),
-                owned.as_mut_ptr(),
+                owned.url_ptr(),
+                owned.ffi_ptr(),
                 Some(http_trampoline),
                 std::ptr::null_mut(),
             ),
@@ -182,19 +188,7 @@ pub fn http_request(
     };
 
     keep_params_alive(id, owned);
-
-    HANDLERS.lock().unwrap().insert(id, Box::new(on_done));
+    HANDLERS.with(|m| m.borrow_mut().insert(id, Box::new(on_done)));
 
     Ok(id)
-}
-
-static PARAMS: LazyLock<Mutex<HashMap<FsNetworkRequestId, OwnedFfiParams>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
-
-fn keep_params_alive(id: FsNetworkRequestId, params: OwnedFfiParams) {
-    PARAMS.lock().unwrap().insert(id, params);
-}
-
-fn drop_params(id: FsNetworkRequestId) {
-    let _ = PARAMS.lock().ok().and_then(|mut m| m.remove(&id));
 }

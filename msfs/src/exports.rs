@@ -15,10 +15,10 @@ macro_rules! export_system {
                 [<$name _SYSTEM>].as_mut().map(f)
             }
 
-            #[no_mangle]
+            #[unsafe(no_mangle)]
             pub extern "C" fn [<$name _system_init>](
                 ctx: $crate::sys::FsContext,
-                p_install: *mut $crate::sys::FsSystemInstallData,
+                p_install: *mut $crate::sys::sSystemInstallData,
             ) -> bool {
                 unsafe { [<$name _SYSTEM>] = Some($ctor); }
                 unsafe {
@@ -29,7 +29,7 @@ macro_rules! export_system {
                 }
             }
 
-            #[no_mangle]
+            #[unsafe(no_mangle)]
             pub extern "C" fn [<$name _system_update>](
                 ctx: $crate::sys::FsContext,
                 dt: f32,
@@ -41,7 +41,7 @@ macro_rules! export_system {
                 }
             }
 
-            #[no_mangle]
+            #[unsafe(no_mangle)]
             pub extern "C" fn [<$name _system_kill>](
                 ctx: $crate::sys::FsContext,
             ) -> bool {
@@ -68,10 +68,10 @@ macro_rules! export_gauge {
                 [<$name _GAUGE>].as_mut().map(f)
             }
 
-            #[no_mangle]
+            #[unsafe(no_mangle)]
             pub extern "C" fn [<$name _gauge_init>](
                 ctx: $crate::sys::FsContext,
-                p_install: *mut $crate::sys::FsGaugeInstallData,
+                p_install: *mut $crate::sys::sGaugeInstallData,
             ) -> bool {
                 unsafe { [<$name _GAUGE>] = Some($ctor); }
                 unsafe {
@@ -82,7 +82,7 @@ macro_rules! export_gauge {
                 }
             }
 
-            #[no_mangle]
+            #[unsafe(no_mangle)]
             pub extern "C" fn [<$name _gauge_update>](
                 ctx: $crate::sys::FsContext,
                 dt: f32,
@@ -94,10 +94,10 @@ macro_rules! export_gauge {
                 }
             }
 
-            #[no_mangle]
+            #[unsafe(no_mangle)]
             pub extern "C" fn [<$name _gauge_draw>](
                 ctx: $crate::sys::FsContext,
-                p_draw: *mut $crate::sys::FsGaugeDrawData,
+                p_draw: *mut $crate::sys::sGaugeDrawData,
             ) -> bool {
                 unsafe {
                     let ctx = $crate::context::Context::from_raw(ctx);
@@ -107,7 +107,7 @@ macro_rules! export_gauge {
                 }
             }
 
-            #[no_mangle]
+            #[unsafe(no_mangle)]
             pub extern "C" fn [<$name _gauge_kill>](
                 ctx: $crate::sys::FsContext,
             ) -> bool {
@@ -120,7 +120,7 @@ macro_rules! export_gauge {
                 }
             }
 
-            #[no_mangle]
+            #[unsafe(no_mangle)]
             pub extern "C" fn [<$name _gauge_mouse_handler>](
                 ctx: $crate::sys::FsContext,
                 x: f32,

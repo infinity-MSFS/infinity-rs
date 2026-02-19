@@ -6,7 +6,7 @@ pub struct Context(NonNull<FsContext>);
 
 impl Context {
     #[inline]
-    pub(crate) unsafe fn from_raw(ctx: FsContext) -> Self {
+    pub unsafe fn from_raw(ctx: FsContext) -> Self {
         let p = NonNull::new(ctx as *mut FsContext).expect("Fscontext ptr is null");
         Self(p)
     }

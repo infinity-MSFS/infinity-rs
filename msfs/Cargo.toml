@@ -3,15 +3,9 @@ name = "msfs"
 version = "0.1.0"
 edition = "2024"
 
-[features]
-# Enable linking against the external NanoVG software-render shim shared library.
-# Keep this opt-in so normal users don't need the shim present.
-nanovg-shim = []
 
 [dependencies]
 msfs_derive = { path = "../msfs_derive" }
-futures = "0.3"
-libc = "0.2"
 bitflags = "1.3"
 
 [build-dependencies]

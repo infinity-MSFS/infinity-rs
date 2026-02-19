@@ -53,7 +53,7 @@ impl Gauge for ToggleGauge {
     }
 
     fn mouse(&mut self, _ctx: &Context, _x: f32, _y: f32, _flags: i32) {
-        if (flags == 0) {
+        if (_flags == 0) {
             return;
         }
 

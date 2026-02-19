@@ -1,16 +1,16 @@
-mod abi;
-mod comm_bus;
-mod context;
-mod events;
-mod exports;
+pub mod abi;
+pub mod comm_bus;
+pub mod context;
+pub mod events;
+pub mod exports;
 pub mod io;
-mod modules;
-mod network;
+pub mod modules;
+pub mod network;
 pub mod prelude;
-mod sys;
-mod types;
-mod utils;
-mod vars;
+pub mod sys;
+pub mod types;
+pub mod utils;
+pub mod vars;
 
 // New: host API indirection for native testing, plus a native NanoVG backend.
 #[cfg(not(target_arch = "wasm32"))]
