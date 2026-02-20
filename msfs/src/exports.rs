@@ -7,7 +7,7 @@ use crate::{
 #[macro_export]
 macro_rules! export_system {
     (name=$name:ident, state=$state:ty, ctor=$ctor:expr $(,)?) => {
-        ::paste::paste! {
+        $crate::__paste::paste! {
             static mut [<$name _SYSTEM>]: ::core::option::Option<$state> = None;
 
             #[inline(always)]
@@ -60,7 +60,7 @@ macro_rules! export_system {
 #[macro_export]
 macro_rules! export_gauge {
     (name=$name:ident, state=$state:ty, ctor=$ctor:expr $(,)?) => {
-        ::paste::paste! {
+        $crate::__paste::paste! {
             static mut [<$name _GAUGE>]: ::core::option::Option<$state> = None;
 
             #[inline(always)]

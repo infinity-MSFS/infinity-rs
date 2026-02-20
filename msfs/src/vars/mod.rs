@@ -1,6 +1,9 @@
 ﻿pub mod a_var;
 pub mod l_var;
 
+pub use a_var::AVar;
+pub use l_var::LVar;
+
 use crate::sys::*;
 
 use std::{ffi::CString, marker::PhantomData, mem::MaybeUninit, os::raw::c_char};
@@ -36,12 +39,59 @@ pub trait VarKind {
 
     fn register(name: *const c_char) -> Self::Id;
 
-    fn get(id: Self::Id, unit: FsUnitId, out: *mut f64) -> FsVarError;
+    fn get(
+        id: Self::Id,
+        unit: FsUnitId,
+        param: FsVarParamArray,
+        out: *mut f64,
+        target: FsObjectId,
+    ) -> FsVarError;
 
-    fn set(id: Self::Id, unit: FsUnitId, value: f64) -> FsVarError;
+    fn set(
+        id: Self::Id,
+        unit: FsUnitId,
+        param: FsVarParamArray,
+        value: f64,
+        target: FsObjectId,
+    ) -> FsVarError;
+
+    fn default_target() -> FsObjectId {
+        FS_OBJECT_ID_USER_AIRCRAFT
+    }
 
     fn can_set() -> bool {
         true
+    }
+}
+
+#[inline]
+pub fn empty_param_array() -> FsVarParamArray {
+    FsVarParamArray {
+        size: 0,
+        array: core::ptr::null_mut(),
+    }
+}
+
+#[derive(Copy, Clone)]
+pub struct VarParamArray1 {
+    variant: FsVarParamVariant,
+}
+
+impl VarParamArray1 {
+    #[inline]
+    pub fn index(index: u32) -> Self {
+        let mut v: FsVarParamVariant = unsafe { core::mem::zeroed() };
+        v.type_ = eFsVarParamType_FsVarParamTypeInteger;
+        v.__bindgen_anon_1 = FsVarParamVariant__bindgen_ty_1 { intValue: index };
+        Self { variant: v }
+    }
+
+    #[inline]
+    pub fn as_raw_mut(&mut self) -> FsVarParamArray {
+        FsVarParamArray {
+            size: 1,
+            array: &mut self.variant as *mut _,
+        }
     }
 }
 
@@ -66,8 +116,18 @@ impl<K: VarKind> Var<K> {
 
     #[inline]
     pub fn get(&self) -> VarResult<f64> {
+        self.get_with(empty_param_array(), K::default_target())
+    }
+
+    #[inline]
+    pub fn get_target(&self, target: FsObjectId) -> VarResult<f64> {
+        self.get_with(empty_param_array(), target)
+    }
+
+    #[inline]
+    pub fn get_with(&self, param: FsVarParamArray, target: FsObjectId) -> VarResult<f64> {
         let mut out = MaybeUninit::<f64>::uninit();
-        let err = K::get(self.id, self.unit.0, out.as_mut_ptr());
+        let err = K::get(self.id, self.unit.0, param, out.as_mut_ptr(), target);
         if err == FsVarError_FS_VAR_ERROR_NONE {
             Ok(unsafe { out.assume_init() })
         } else {
@@ -76,16 +136,53 @@ impl<K: VarKind> Var<K> {
     }
 
     #[inline]
+    pub fn get_indexed(&self, index: u32) -> VarResult<f64> {
+        self.get_indexed_target(index, K::default_target())
+    }
+
+    #[inline]
+    pub fn get_indexed_target(&self, index: u32, target: FsObjectId) -> VarResult<f64> {
+        let mut param = VarParamArray1::index(index);
+        self.get_with(param.as_raw_mut(), target)
+    }
+
+    #[inline]
     pub fn set(&self, value: f64) -> VarResult<()> {
+        self.set_with(empty_param_array(), value, K::default_target())
+    }
+
+    #[inline]
+    pub fn set_target(&self, target: FsObjectId, value: f64) -> VarResult<()> {
+        self.set_with(empty_param_array(), value, target)
+    }
+
+    #[inline]
+    pub fn set_with(
+        &self,
+        param: FsVarParamArray,
+        value: f64,
+        target: FsObjectId,
+    ) -> VarResult<()> {
         if !K::can_set() {
             return Err(VarError::Fs(FsVarError_FS_VAR_ERROR_NOT_SUPPORTED));
         }
-        let err = unsafe { K::set(self.id, self.unit.0, value) };
+        let err = K::set(self.id, self.unit.0, param, value, target);
         if err == FsVarError_FS_VAR_ERROR_NONE {
             Ok(())
         } else {
             Err(VarError::Fs(err))
         }
+    }
+
+    #[inline]
+    pub fn set_indexed(&self, index: u32, value: f64) -> VarResult<()> {
+        self.set_indexed_target(index, K::default_target(), value)
+    }
+
+    #[inline]
+    pub fn set_indexed_target(&self, index: u32, target: FsObjectId, value: f64) -> VarResult<()> {
+        let mut param = VarParamArray1::index(index);
+        self.set_with(param.as_raw_mut(), value, target)
     }
 
     #[inline]

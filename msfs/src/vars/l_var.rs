@@ -14,12 +14,24 @@ impl VarKind for LVarKind {
     }
 
     #[inline]
-    fn get(id: Self::Id, unit: crate::sys::FsUnitId, out: *mut f64) -> crate::sys::FsVarError {
+    fn get(
+        id: Self::Id,
+        unit: crate::sys::FsUnitId,
+        _param: crate::sys::FsVarParamArray,
+        out: *mut f64,
+        _target: crate::sys::FsObjectId,
+    ) -> crate::sys::FsVarError {
         unsafe { crate::sys::fsVarsLVarGet(id, unit, out) }
     }
 
     #[inline]
-    fn set(id: Self::Id, unit: crate::sys::FsUnitId, value: f64) -> crate::sys::FsVarError {
+    fn set(
+        id: Self::Id,
+        unit: crate::sys::FsUnitId,
+        _param: crate::sys::FsVarParamArray,
+        value: f64,
+        _target: crate::sys::FsObjectId,
+    ) -> crate::sys::FsVarError {
         unsafe { fsVarsLVarSet(id, unit, value) }
     }
 }

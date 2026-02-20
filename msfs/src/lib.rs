@@ -1,3 +1,8 @@
+extern crate self as msfs;
+
+// Re-export used by macros so downstream crates don't need a direct `paste` dependency.
+pub use paste as __paste;
+
 pub mod abi;
 pub mod comm_bus;
 pub mod context;

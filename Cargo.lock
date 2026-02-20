@@ -149,6 +149,7 @@ dependencies = [
  "cc",
  "msfs_derive",
  "msfs_sdk",
+ "paste",
 ]
 
 [[package]]
@@ -156,6 +157,7 @@ name = "msfs_derive"
 version = "0.1.0"
 dependencies = [
  "paste",
+ "proc-macro2",
  "quote",
  "syn",
 ]
