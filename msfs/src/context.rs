@@ -14,4 +14,9 @@ impl Context {
     pub fn as_ptr(&self) -> *mut FsContext {
         self.0.as_ptr()
     }
+
+    #[inline]
+    pub fn fs_context(&self) -> FsContext {
+        self.0.as_ptr() as FsContext
+    }
 }
