@@ -323,7 +323,14 @@ impl NvgContext {
     }
 
     pub fn set_clip_mode(&self, mode: ClipMode) {
-        unsafe { sys::nvgSetClipMode(self.raw, mode as i32) };
+        #[cfg(target_arch = "wasm32")]
+        unsafe {
+            sys::nvgSetClipMode(self.raw, mode as u32)
+        };
+        #[cfg(not(target_arch = "wasm32"))]
+        unsafe {
+            sys::nvgSetClipMode(self.raw, mode as i32)
+        };
     }
 
     pub fn set_clipped(&self, clipped: bool) {

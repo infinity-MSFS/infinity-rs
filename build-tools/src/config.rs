@@ -1,0 +1,111 @@
+use anyhow::{Context, Result};
+use serde::Deserialize;
+use std::{fs, path::Path};
+
+#[derive(Debug, Deserialize, Default, Clone)]
+pub struct InfinityMsfsToml {
+    #[serde(default)]
+    pub build: BuildConfig,
+
+    #[serde(default)]
+    pub wasm_opt: WasmOptConfig,
+
+    #[serde(default)]
+    pub scripts: ScriptsConfig,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct BuildConfig {
+    #[serde(default = "default_target")]
+    pub target: String,
+
+    pub package: Option<String>,
+    pub bin: Option<String>,
+
+    #[serde(default = "default_out_dir")]
+    pub out_dir: String,
+
+    pub out_name: Option<String>,
+
+    #[serde(default)]
+    pub copy: Vec<CopyRule>,
+}
+
+impl Default for BuildConfig {
+    fn default() -> Self {
+        Self {
+            target: default_target(),
+            package: None,
+            bin: None,
+            out_dir: default_out_dir(),
+            out_name: None,
+            copy: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct WasmOptConfig {
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+
+    #[serde(default = "default_wasm_opt_args")]
+    pub args: Vec<String>,
+}
+
+impl Default for WasmOptConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            args: default_wasm_opt_args(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct ScriptsConfig {
+    #[serde(default)]
+    pub pre_build: Vec<String>,
+
+    #[serde(default)]
+    pub post_build: Vec<String>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct CopyRule {
+    pub from: String,
+    pub to: String,
+}
+
+fn default_target() -> String {
+    "wasm32-wasip1".to_string()
+}
+
+fn default_out_dir() -> String {
+    "build/msfs".to_string()
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_wasm_opt_args() -> Vec<String> {
+    vec![
+        "-O1".to_string(),
+        "--signext-lowering".to_string(),
+        "--enable-bulk-memory".to_string(),
+        "--enable-nontrapping-float-to-int".to_string(),
+    ]
+}
+
+impl InfinityMsfsToml {
+    pub fn load(path: &Path) -> Result<Self> {
+        let raw = fs::read_to_string(path)
+            .with_context(|| format!("failed to read config file {}", path.display()))?;
+
+        let cfg: Self = toml::from_str(&raw)
+            .with_context(|| format!("failed to parse TOML in {}", path.display()))?;
+
+        Ok(cfg)
+    }
+}

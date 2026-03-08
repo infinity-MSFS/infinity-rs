@@ -148,7 +148,7 @@ impl ops::BitOrAssign for ImageFlags {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(i32)]
+#[repr(u32)]
 pub enum ClipMode {
     Replace = 0,
     Intersect = 1,

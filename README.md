@@ -50,6 +50,49 @@ cargo build --target wasm32-wasip1
 
 ## Core Concepts
 
+
+### Build Tools
+The build tools supplied with the project will compile a rust lib and run wasm-opt on it. to use it create a `infinity-msfs.toml` file in the rust project's root
+```toml
+[build]
+target = "wasm32-wasip1"
+package = "lev2013"
+bin = "lev2013"
+out_dir = "build/msfs"
+out_name = "lev2013.wasm"
+
+copy = [
+  { from = "manifest.json", to = "build/msfs/manifest.json" },
+  { from = "layout.json", to = "build/msfs/layout.json" }
+]
+
+[wasm_opt]
+enabled = true
+args = [
+  "-O1",
+  "--signext-lowering",
+  "--enable-bulk-memory",
+  "--enable-nontrapping-float-to-int",
+]
+
+[scripts]
+pre_build = [
+  "cargo fmt --check"
+]
+
+post_build = [
+  "python ./tools/fix_layout.py"
+]
+```
+
+some example build commands:
+```bash
+infinity-msfs build
+infinity-msfs build --release
+infinity-msfs build --release --no-wasm-opt
+infinity-msfs build -p lev2013
+```
+
 ### Systems and Gauges
 
 Everything in MSFS runs as either a **System** or a **Gauge**. Implement the corresponding trait and export it with the matching macro.
