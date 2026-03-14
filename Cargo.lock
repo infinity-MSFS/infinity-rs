@@ -336,6 +336,8 @@ dependencies = [
  "msfs_derive",
  "msfs_sdk",
  "paste",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
