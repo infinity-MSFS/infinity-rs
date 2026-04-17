@@ -4,8 +4,16 @@ use std::{fs, path::Path};
 
 #[derive(Debug, Deserialize, Default, Clone)]
 pub struct InfinityMsfsToml {
+    /// Legacy single-package build config. Still honoured when
+    /// `packages` is empty and a package is resolvable (via CLI or
+    /// `build.package`).
     #[serde(default)]
     pub build: BuildConfig,
+
+    /// Multi-package build list. When non-empty, each entry is built
+    /// in the order given. Fields left unset inherit from [`BuildConfig`].
+    #[serde(default)]
+    pub packages: Vec<PackageBuild>,
 
     #[serde(default)]
     pub wasm_opt: WasmOptConfig,
@@ -42,6 +50,21 @@ impl Default for BuildConfig {
             copy: Vec::new(),
         }
     }
+}
+
+/// One entry in the `[[packages]]` array. Every field except `package`
+/// is optional and inherits from the top-level `[build]` block when
+/// omitted.
+#[derive(Debug, Deserialize, Clone)]
+pub struct PackageBuild {
+    pub package: String,
+    pub bin: Option<String>,
+    pub target: Option<String>,
+    pub out_dir: Option<String>,
+    pub out_name: Option<String>,
+
+    #[serde(default)]
+    pub copy: Vec<CopyRule>,
 }
 
 #[derive(Debug, Deserialize, Clone)]

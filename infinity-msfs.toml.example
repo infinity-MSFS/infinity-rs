@@ -1,0 +1,54 @@
+# Copy this file to `infinity-msfs.toml` in your MSFS project root and
+# replace the sample package/bin names with your own workspace members.
+#
+# List the configured projects without building:
+#   infinity-msfs projects
+#   infinity-msfs list-projects
+#
+# Build every configured project:
+#   infinity-msfs build --release
+#
+# Build only one configured project:
+#   infinity-msfs build --only demo-gauge --release
+
+[build]
+target = "wasm32-wasip1"
+out_dir = "build/msfs"
+
+copy = [
+  { from = "manifest.json", to = "build/msfs/manifest.json" },
+  { from = "layout.json", to = "build/msfs/layout.json" }
+]
+
+[[packages]]
+package = "demo-gauge"
+bin = "demo_gauge"
+out_name = "demo-gauge.wasm"
+
+[[packages]]
+package = "demo-system"
+bin = "demo_system"
+out_name = "demo-system.wasm"
+out_dir = "build/msfs/systems"
+
+copy = [
+  { from = "systems/demo-system/config.json", to = "build/msfs/systems/config.json" }
+]
+
+[wasm_opt]
+enabled = true
+args = [
+  "-O1",
+  "--signext-lowering",
+  "--enable-bulk-memory",
+  "--enable-nontrapping-float-to-int",
+]
+
+[scripts]
+pre_build = [
+  "cargo fmt --check"
+]
+
+post_build = [
+  "python ./tools/fix_layout.py"
+]

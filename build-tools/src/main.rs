@@ -21,6 +21,7 @@ fn real_main() -> Result<()> {
 
     match cli.command {
         Commands::Build(args) => build::run_build(args)?,
+        Commands::Projects(args) => build::run_projects(args)?,
     }
 
     Ok(())

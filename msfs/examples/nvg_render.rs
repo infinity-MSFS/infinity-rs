@@ -16,6 +16,7 @@ use std::f32::consts::PI;
 pub struct AttitudeGauge {
     nvg: Option<NvgContext>,
     font: Option<i32>,
+    image: Option<i32>,
 
     pitch_var: AVar,
     bank_var: AVar,
@@ -26,6 +27,7 @@ impl AttitudeGauge {
         Self {
             nvg: None,
             font: None,
+            image: None,
             pitch_var: AVar::new("ATTITUDE INDICATOR PITCH DEGREES", "DEGREES")
                 .expect("Failed to create pitch AVar"),
             bank_var: AVar::new("ATTITUDE INDICATOR BANK DEGREES", "DEGREES")
@@ -42,6 +44,7 @@ impl Gauge for AttitudeGauge {
         };
 
         self.font = nvg.create_font("sans", "./data/Roboto-Regular.ttf");
+        self.image = nvg.create_image("./data/image.png", ImageFlags::NONE);
         self.nvg = Some(nvg);
         true
     }
@@ -99,6 +102,16 @@ impl Gauge for AttitudeGauge {
                     .fill(Color::rgb(255, 255, 0))
                     .draw(nvg);
             });
+
+            // Overlay image.png in the bottom-right corner
+            if let Some(img) = self.image {
+                let (img_w, img_h) = nvg.image_size(img);
+                let (iw, ih) = (img_w as f32, img_h as f32);
+                let x = win_w - iw - 10.0;
+                let y = win_h - ih - 10.0;
+                let pattern = ImagePattern::new(nvg, x, y, iw, ih, 0.0, img, 1.0);
+                Shape::rect(x, y, iw, ih).fill(pattern).draw(nvg);
+            }
         });
         true
     }

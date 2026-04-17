@@ -52,19 +52,28 @@ cargo build --target wasm32-wasip1
 
 
 ### Build Tools
-The build tools supplied with the project will compile a rust lib and run wasm-opt on it. to use it create a `infinity-msfs.toml` file in the rust project's root
+The build tools supplied with the project compile Rust WASM targets, optionally run `wasm-opt`, and can list the configured projects before building. Copy [`infinity-msfs.toml.example`](infinity-msfs.toml.example) to `infinity-msfs.toml` in your project root and adjust the package names and copy rules for your own workspace.
+
 ```toml
 [build]
 target = "wasm32-wasip1"
-package = "lev2013"
-bin = "lev2013"
 out_dir = "build/msfs"
-out_name = "lev2013.wasm"
 
 copy = [
   { from = "manifest.json", to = "build/msfs/manifest.json" },
   { from = "layout.json", to = "build/msfs/layout.json" }
 ]
+
+[[packages]]
+package = "demo-gauge"
+bin = "demo_gauge"
+out_name = "demo-gauge.wasm"
+
+[[packages]]
+package = "demo-system"
+bin = "demo_system"
+out_name = "demo-system.wasm"
+out_dir = "build/msfs/systems"
 
 [wasm_opt]
 enabled = true
@@ -87,10 +96,12 @@ post_build = [
 
 some example build commands:
 ```bash
+infinity-msfs projects
+infinity-msfs list-projects
 infinity-msfs build
 infinity-msfs build --release
 infinity-msfs build --release --no-wasm-opt
-infinity-msfs build -p lev2013
+infinity-msfs build --only demo-gauge --release
 ```
 
 ### Systems and Gauges
