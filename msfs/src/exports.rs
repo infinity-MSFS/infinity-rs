@@ -8,6 +8,7 @@ use crate::{
 macro_rules! export_system {
     (name=$name:ident, state=$state:ty, ctor=$ctor:expr $(,)?) => {
         $crate::__paste::paste! {
+            #[allow(non_upper_case_globals)]
             static mut [<$name _SYSTEM>]: ::core::option::Option<$state> = None;
 
             #[inline(always)]
@@ -61,6 +62,7 @@ macro_rules! export_system {
 macro_rules! export_gauge {
     (name=$name:ident, state=$state:ty, ctor=$ctor:expr $(,)?) => {
         $crate::__paste::paste! {
+            #[allow(non_upper_case_globals)]
             static mut [<$name _GAUGE>]: ::core::option::Option<$state> = None;
 
             #[inline(always)]
