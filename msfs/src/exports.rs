@@ -13,7 +13,7 @@ macro_rules! export_system {
 
             #[inline(always)]
             unsafe fn [<$name _with>]<R>(f: impl FnOnce(&mut $state) -> R) -> Option<R> {
-                [<$name _SYSTEM>].as_mut().map(f)
+                unsafe { [<$name _SYSTEM>].as_mut().map(f) }
             }
 
             #[unsafe(no_mangle)]
@@ -67,7 +67,7 @@ macro_rules! export_gauge {
 
             #[inline(always)]
             unsafe fn [<$name _with>]<R>(f: impl FnOnce(&mut $state) -> R) -> Option<R> {
-                [<$name _GAUGE>].as_mut().map(f)
+                unsafe { [<$name _GAUGE>].as_mut().map(f) }
             }
 
             #[unsafe(no_mangle)]
