@@ -1,7 +1,5 @@
 use crate::sys::*;
 use std::{
-    cell::RefCell,
-    collections::HashMap,
     ffi::CString,
     os::raw::{c_char, c_void},
 };
@@ -29,18 +27,10 @@ pub struct HttpResponse {
 
 type Handler = Box<dyn FnOnce(HttpResponse) + 'static>;
 
-thread_local! {
-    static HANDLERS: RefCell<HashMap<FsNetworkRequestId, Handler>> =
-        RefCell::new(HashMap::new());
-
-    static PARAMS: RefCell<HashMap<FsNetworkRequestId, OwnedFfiParams>> =
-        RefCell::new(HashMap::new());
-}
-
 extern "C" fn http_trampoline(
     request_id: FsNetworkRequestId,
     error_code: i32,
-    _user_data: *mut c_void,
+    user_data: *mut c_void,
 ) {
     let data = unsafe {
         let ptr = fsNetworkHttpRequestGetData(request_id);
@@ -58,12 +48,19 @@ extern "C" fn http_trampoline(
         data,
     };
 
-    drop_params(request_id);
-
-    let handler = HANDLERS.with(|m| m.borrow_mut().remove(&request_id));
-    if let Some(h) = handler {
-        h(resp);
+    if user_data.is_null() {
+        return;
     }
+
+    let mut state = unsafe { Box::from_raw(user_data as *mut RequestState) };
+    if let Some(handler) = state.handler.take() {
+        handler(resp);
+    }
+}
+
+struct RequestState {
+    params: OwnedFfiParams,
+    handler: Option<Handler>,
 }
 
 struct OwnedFfiParams {
@@ -135,14 +132,6 @@ impl OwnedFfiParams {
     }
 }
 
-fn keep_params_alive(id: FsNetworkRequestId, params: OwnedFfiParams) {
-    PARAMS.with(|m| m.borrow_mut().insert(id, params));
-}
-
-fn drop_params(id: FsNetworkRequestId) {
-    PARAMS.with(|m| m.borrow_mut().remove(&id));
-}
-
 #[derive(Default)]
 pub struct HttpParams {
     pub headers: Vec<String>,
@@ -162,33 +151,35 @@ pub fn http_request(
     params: HttpParams,
     on_done: impl FnOnce(HttpResponse) + 'static,
 ) -> NetResult<FsNetworkRequestId> {
-    let mut owned = OwnedFfiParams::new(url, params)?;
+    let mut state = Box::new(RequestState {
+        params: OwnedFfiParams::new(url, params)?,
+        handler: Some(Box::new(on_done)),
+    });
+    let user_data = (&mut *state as *mut RequestState).cast::<c_void>();
 
     let id = unsafe {
         match method {
             Method::Get => fsNetworkHttpRequestGet(
-                owned.url_ptr(),
-                owned.ffi_ptr(),
+                state.params.url_ptr(),
+                state.params.ffi_ptr(),
                 Some(http_trampoline),
-                std::ptr::null_mut(),
+                user_data,
             ),
             Method::Post => fsNetworkHttpRequestPost(
-                owned.url_ptr(),
-                owned.ffi_ptr(),
+                state.params.url_ptr(),
+                state.params.ffi_ptr(),
                 Some(http_trampoline),
-                std::ptr::null_mut(),
+                user_data,
             ),
             Method::Put => fsNetworkHttpRequestPut(
-                owned.url_ptr(),
-                owned.ffi_ptr(),
+                state.params.url_ptr(),
+                state.params.ffi_ptr(),
                 Some(http_trampoline),
-                std::ptr::null_mut(),
+                user_data,
             ),
         }
     };
 
-    keep_params_alive(id, owned);
-    HANDLERS.with(|m| m.borrow_mut().insert(id, Box::new(on_done)));
-
+    let _ = Box::into_raw(state);
     Ok(id)
 }
