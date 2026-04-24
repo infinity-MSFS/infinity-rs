@@ -170,42 +170,24 @@ impl<R: Read> Read for ProgressReader<R> {
 // Extraction
 // ---------------------------------------------------------------------------
 
-/// Extracts a `.tar.gz` byte slice under `dest`, stripping one leading
-/// path component from every archive entry (so the archive can be packaged
-/// as `msfs-sdk-headers-vX.Y.Z/<contents>` or just `<contents>` directly).
+/// Extracts a `.tar.gz` byte slice under `dest`.
+///
+/// Archive entries are extracted at their stored paths (e.g. `WASM/include/…`)
+/// relative to `dest`.  No leading component is stripped — the `pack-sdk`
+/// command always writes paths in their canonical `WASM/…` form.
 fn extract_tar_gz(data: &[u8], dest: &Path) -> Result<()> {
     let gz = GzDecoder::new(data);
-    let archive = Archive::new(gz);
+    let mut archive = Archive::new(gz);
 
-    // Peek at the first entry to decide whether there is a common root
-    // directory to strip (common in GitHub release archives).
-    let strip_root = detect_single_root_dir(data)?;
-
-    let gz2 = GzDecoder::new(data);
-    let mut archive2 = Archive::new(gz2);
-
-    for entry in archive2
+    for entry in archive
         .entries()
         .context("failed to read archive entries")?
     {
         let mut entry = entry.context("corrupt archive entry")?;
-        let raw_path = entry
+        let rel = entry
             .path()
             .context("archive entry has no path")?
             .into_owned();
-
-        let rel = if strip_root {
-            // Drop the first component (the root directory).
-            let mut components = raw_path.components();
-            components.next(); // skip root dir
-            let rest: PathBuf = components.collect();
-            if rest.as_os_str().is_empty() {
-                continue; // skip the root dir entry itself
-            }
-            rest
-        } else {
-            raw_path
-        };
 
         // Guard against path-traversal attacks in the archive.
         let out_path = safe_join(dest, &rel)?;
@@ -225,38 +207,7 @@ fn extract_tar_gz(data: &[u8], dest: &Path) -> Result<()> {
         }
     }
 
-    // Silence the unused `archive` borrow — we only used it for the peek.
-    drop(archive);
-
     Ok(())
-}
-
-/// Returns `true` if every archive entry lives under a single root directory,
-/// meaning we should strip that leading component.
-fn detect_single_root_dir(data: &[u8]) -> Result<bool> {
-    let gz = GzDecoder::new(data);
-    let mut archive = Archive::new(gz);
-    let mut root: Option<String> = None;
-
-    for entry in archive
-        .entries()
-        .context("failed to read archive entries")?
-    {
-        let entry = entry.context("corrupt archive entry")?;
-        let path = entry.path().context("archive entry has no path")?;
-        let first = path
-            .components()
-            .next()
-            .map(|c| c.as_os_str().to_string_lossy().into_owned());
-
-        match (first, root.as_ref()) {
-            (Some(f), None) => root = Some(f),
-            (Some(f), Some(r)) if &f != r => return Ok(false),
-            _ => {}
-        }
-    }
-
-    Ok(root.is_some())
 }
 
 /// Joins `base` and `rel` while ensuring the result stays inside `base`
