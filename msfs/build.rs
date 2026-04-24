@@ -1,5 +1,6 @@
 ﻿fn main() {
     let wasm = std::env::var("TARGET").unwrap().starts_with("wasm32-");
+    let simconnect = std::env::var("CARGO_FEATURE_SIMCONNECT").is_ok();
     let msfs_sdk = msfs_sdk::msfs_sdk_path().unwrap();
 
     if wasm {
@@ -24,7 +25,6 @@
         println!("cargo:rerun-if-changed=src/bindgen_support/wrapper.h");
         let mut bindings = bindgen::Builder::default()
             .clang_arg(format!("-I{msfs_sdk}/WASM/include"))
-            .clang_arg(format!("-I{msfs_sdk}/SimConnect SDK/include"))
             .clang_arg(format!("-I{}", "src/bindgen_support"))
             .clang_arg("-fms-extensions")
             .clang_arg("-fvisibility=default")
@@ -37,7 +37,6 @@
             // .blocklist_function("nvgStrokeColor")
             // .blocklist_function("nvgStrokePaint")
             .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
-            .rustified_enum("SIMCONNECT_EXCEPTION")
             .impl_debug(false)
             // `opaque_type` added to avoid alignment errors. These alignment errors are caused
             // because virtual methods are not well supported in rust-bindgen.
@@ -49,6 +48,13 @@
             .opaque_type("IAircraftCCallback")
             .opaque_type("IPanelCCallback")
             .opaque_type("IFSXPanelCCallback");
+
+        if simconnect {
+            bindings = bindings
+                .clang_arg(format!("-I{msfs_sdk}/SimConnect SDK/include"))
+                .clang_arg("-DUSE_SIMCONNECT=1")
+                .rustified_enum("SIMCONNECT_EXCEPTION");
+        }
 
         if wasm {
             bindings = bindings.clang_arg("-D_MSFS_WASM 1");
@@ -63,7 +69,7 @@
             .unwrap();
     }
 
-    if !wasm {
+    if !wasm && simconnect {
         println!("cargo:rustc-link-search={msfs_sdk}/SimConnect SDK/lib/static");
         println!("cargo:rustc-link-lib=SimConnect");
         println!("cargo:rustc-link-lib=shlwapi");

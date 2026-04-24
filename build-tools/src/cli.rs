@@ -1,4 +1,5 @@
 use clap::{Args, Parser, Subcommand};
+use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
 #[command(name = "infinity-msfs")]
@@ -14,6 +15,19 @@ pub enum Commands {
     Build(BuildArgs),
     #[command(alias = "list-projects")]
     Projects(ProjectsArgs),
+    /// Download the pinned MSFS SDK headers to the local cache.
+    ///
+    /// After running this command, `cargo build --target wasm32-wasip1` no
+    /// longer requires the full MSFS SDK to be installed.  The headers are
+    /// stored in the platform cache directory and are reused across projects.
+    Setup(SetupArgs),
+    /// Pack the MSFS SDK headers from a full SDK installation into a
+    /// redistributable `.tar.gz` archive ready for upload.
+    ///
+    /// The archive contains exactly the WASM subtree required by the crate
+    /// build script.  Upload it to your CDN/R2 bucket and point
+    /// `SDK_HEADERS_URL` (in `msfs_sdk/src/lib.rs`) at the public URL.
+    PackSdk(PackSdkArgs),
 }
 
 #[derive(Debug, Args, Clone)]
@@ -38,6 +52,30 @@ pub struct BuildArgs {
 
     #[arg(long = "no-wasm-opt")]
     pub no_wasm_opt: bool,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct PackSdkArgs {
+    /// Path to the root of the MSFS SDK installation.
+    /// Defaults to the `MSFS2024_SDK` environment variable.
+    #[arg(long, env = "MSFS2024_SDK")]
+    pub sdk_path: String,
+
+    /// Where to write the output archive.
+    /// Defaults to `msfs-sdk-headers-v<VERSION>.tar.gz` in the current directory.
+    #[arg(long, short = 'o')]
+    pub output: Option<PathBuf>,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct SetupArgs {
+    /// Re-download even if the pinned version is already cached.
+    #[arg(long)]
+    pub force: bool,
+
+    /// Override the download URL (defaults to the built-in pinned URL).
+    #[arg(long, env = "INFINITY_MSFS_SDK_URL")]
+    pub url: Option<String>,
 }
 
 #[derive(Debug, Args, Clone)]

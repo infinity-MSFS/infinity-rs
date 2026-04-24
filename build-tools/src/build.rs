@@ -2,7 +2,7 @@ use crate::{
     cargo_meta,
     cli::{BuildArgs, ProjectsArgs},
     config::{BuildConfig, CopyRule, InfinityMsfsToml, PackageBuild},
-    process, scripts,
+    process, scripts, setup,
     ui::{self, BuildOutcome, BuildUi},
     util,
 };
@@ -25,6 +25,8 @@ struct BuildPlan {
 }
 
 pub fn run_build(args: BuildArgs) -> Result<()> {
+    setup::ensure_sdk_headers()?;
+
     let root = util::find_project_root()?;
     let config_path = util::config_path(&root);
 

@@ -3,6 +3,10 @@ name = "msfs"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = []
+# Enable SimConnect bindings and linking (Windows only; requires the full MSFS SDK).
+simconnect = []
 
 [dependencies]
 msfs_derive = { path = "../msfs_derive" }

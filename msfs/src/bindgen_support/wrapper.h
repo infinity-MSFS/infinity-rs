@@ -11,4 +11,6 @@
 #include <MSFS/MSFS_Utils.h>
 #include <MSFS/MSFS_IO.h>
 #include <MSFS/Render/nanovg.h>
+#ifdef USE_SIMCONNECT
 #include <SimConnect.h>
+#endif

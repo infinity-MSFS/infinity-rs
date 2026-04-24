@@ -2,8 +2,10 @@ mod build;
 mod cargo_meta;
 mod cli;
 mod config;
+mod pack_sdk;
 mod process;
 mod scripts;
+mod setup;
 mod ui;
 mod util;
 
@@ -24,6 +26,8 @@ fn real_main() -> Result<()> {
     match cli.command {
         Commands::Build(args) => build::run_build(args)?,
         Commands::Projects(args) => build::run_projects(args)?,
+        Commands::Setup(args) => setup::run_setup(args)?,
+        Commands::PackSdk(args) => pack_sdk::run_pack_sdk(args)?,
     }
 
     Ok(())
