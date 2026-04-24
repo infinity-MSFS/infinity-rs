@@ -1,28 +1,20 @@
-use anyhow::{Context, Result, bail};
+use crate::process;
+use anyhow::Result;
 use std::{path::Path, process::Command};
 
-pub fn run_script_list(root: &Path, label: &str, scripts: &[String]) -> Result<()> {
+pub fn run_script_list(root: &Path, label: &str, scripts: &[String], verbose: bool) -> Result<()> {
     for (i, script) in scripts.iter().enumerate() {
-        run_script(root, &format!("{label}[{i}]"), script)?;
+        run_script(root, &format!("{label}[{i}]"), script, verbose)?;
     }
 
     Ok(())
 }
 
-fn run_script(root: &Path, label: &str, script: &str) -> Result<()> {
-    println!("[infinity-msfs] running script {label}: {script}");
-
+fn run_script(root: &Path, label: &str, script: &str, verbose: bool) -> Result<()> {
     let mut cmd = shell_command(script);
     cmd.current_dir(root);
 
-    let status = cmd
-        .status()
-        .with_context(|| format!("failed to start script {label}"))?;
-
-    if !status.success() {
-        bail!("script {label} failed with status {status}");
-    }
-
+    process::run_command(&mut cmd, &format!("script {label}"), verbose)?;
     Ok(())
 }
 

@@ -21,6 +21,10 @@ pub struct BuildArgs {
     #[arg(long)]
     pub release: bool,
 
+    /// Stream subprocess output directly instead of the compact progress UI.
+    #[arg(short = 'v', long)]
+    pub verbose: bool,
+
     /// Override the single legacy `[build].package`. Ignored when
     /// `[[packages]]` is set and `--only` is preferred there.
     #[arg(short = 'p', long = "package")]

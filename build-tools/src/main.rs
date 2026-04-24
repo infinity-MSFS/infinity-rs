@@ -2,7 +2,9 @@ mod build;
 mod cargo_meta;
 mod cli;
 mod config;
+mod process;
 mod scripts;
+mod ui;
 mod util;
 
 use anyhow::Result;
@@ -11,7 +13,7 @@ use cli::{Cli, Commands};
 
 fn main() {
     if let Err(err) = real_main() {
-        eprintln!("[infinity-msfs] error: {err:#}");
+        ui::print_error(&err);
         std::process::exit(1);
     }
 }

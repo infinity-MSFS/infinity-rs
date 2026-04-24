@@ -102,6 +102,7 @@ infinity-msfs build
 infinity-msfs build --release
 infinity-msfs build --release --no-wasm-opt
 infinity-msfs build --only demo-gauge --release
+infinity-msfs build --verbose
 ```
 
 ### Systems and Gauges

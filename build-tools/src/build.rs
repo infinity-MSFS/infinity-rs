@@ -2,7 +2,9 @@ use crate::{
     cargo_meta,
     cli::{BuildArgs, ProjectsArgs},
     config::{BuildConfig, CopyRule, InfinityMsfsToml, PackageBuild},
-    scripts, util,
+    process, scripts,
+    ui::{self, BuildOutcome, BuildUi},
+    util,
 };
 use anyhow::{Context, Result, bail};
 use cargo_metadata::Metadata;
@@ -41,35 +43,28 @@ pub fn run_build(args: BuildArgs) -> Result<()> {
     }
 
     let use_wasm_opt = cfg.wasm_opt.enabled && !args.no_wasm_opt;
+    let mut ui = BuildUi::new(&root, plans.len(), args.release, use_wasm_opt, args.verbose);
 
-    println!("[infinity-msfs] root: {}", root.display());
-    println!(
-        "[infinity-msfs] profile: {}",
-        if args.release { "release" } else { "debug" }
-    );
-    println!(
-        "[infinity-msfs] wasm-opt: {}",
-        if use_wasm_opt { "enabled" } else { "disabled" }
-    );
-    println!("[infinity-msfs] packages to build: {}", plans.len());
-    for plan in &plans {
-        println!(
-            "[infinity-msfs]   - {} (bin {}) -> {}",
-            plan.package,
-            plan.bin,
-            plan.out_dir.join(&plan.out_name).display()
-        );
-    }
-
-    scripts::run_script_list(&root, "pre_build", &cfg.scripts.pre_build)?;
+    ui.announce_phase("Running pre-build scripts", cfg.scripts.pre_build.len());
+    scripts::run_script_list(&root, "pre_build", &cfg.scripts.pre_build, args.verbose)?;
 
     for plan in &plans {
-        build_one(&root, plan, &cfg.wasm_opt.args, use_wasm_opt, args.release)?;
+        ui.start_package(&plan.package);
+        let outcome = build_one(
+            &root,
+            plan,
+            &cfg.wasm_opt.args,
+            use_wasm_opt,
+            args.release,
+            args.verbose,
+        )?;
+        ui.finish_package(&plan.package, &plan.out_dir.join(&plan.out_name), outcome);
     }
 
-    scripts::run_script_list(&root, "post_build", &cfg.scripts.post_build)?;
+    ui.announce_phase("Running post-build scripts", cfg.scripts.post_build.len());
+    scripts::run_script_list(&root, "post_build", &cfg.scripts.post_build, args.verbose)?;
 
-    println!("[infinity-msfs] done");
+    ui.finish();
     Ok(())
 }
 
@@ -90,17 +85,17 @@ pub fn run_projects(args: ProjectsArgs) -> Result<()> {
         bail!("no packages selected to list");
     }
 
-    println!("[infinity-msfs] root: {}", root.display());
-    println!("[infinity-msfs] configured projects: {}", plans.len());
-    for plan in &plans {
-        println!(
-            "[infinity-msfs]   - {} (bin {}, target {}) -> {}",
-            plan.package,
-            plan.bin,
-            plan.target,
-            plan.out_dir.join(&plan.out_name).display()
-        );
-    }
+    ui::print_projects(
+        root.as_path(),
+        plans.into_iter().map(|plan| {
+            (
+                plan.package,
+                plan.bin,
+                plan.target,
+                plan.out_dir.join(plan.out_name),
+            )
+        }),
+    );
 
     Ok(())
 }
@@ -111,20 +106,12 @@ fn build_one(
     wasm_opt_args: &[String],
     use_wasm_opt: bool,
     release: bool,
-) -> Result<()> {
-    println!("[infinity-msfs] -----------------------------------------");
-    println!("[infinity-msfs] building: {}", plan.package);
-    println!("[infinity-msfs] bin:      {}", plan.bin);
-    println!("[infinity-msfs] target:   {}", plan.target);
-    println!(
-        "[infinity-msfs] output:   {}",
-        plan.out_dir.join(&plan.out_name).display()
-    );
-
+    verbose: bool,
+) -> Result<BuildOutcome> {
     let built_wasm = built_wasm_path(root, &plan.target, release, &plan.bin);
     let final_wasm = plan.out_dir.join(&plan.out_name);
 
-    run_cargo_build(root, &plan.target, &plan.package, release)?;
+    run_cargo_build(root, &plan.target, &plan.package, release, verbose)?;
 
     if !built_wasm.exists() {
         bail!(
@@ -141,14 +128,14 @@ fn build_one(
     })?;
 
     if use_wasm_opt {
-        run_wasm_opt(root, wasm_opt_args, &built_wasm, &final_wasm)?;
+        run_wasm_opt(root, wasm_opt_args, &built_wasm, &final_wasm, verbose)?;
     } else {
         util::copy_file(&built_wasm, &final_wasm)?;
     }
 
-    run_copy_rules(root, &plan.copy)?;
+    let copied_files = run_copy_rules(root, &plan.copy)?;
 
-    Ok(())
+    Ok(BuildOutcome { copied_files })
 }
 
 /// Build a list of `BuildPlan`s honouring `[[packages]]` when present and
@@ -281,7 +268,13 @@ fn built_wasm_path(root: &Path, target: &str, release: bool, bin_name: &str) -> 
         .join(format!("{bin_name}.wasm"))
 }
 
-fn run_cargo_build(root: &Path, target: &str, package: &str, release: bool) -> Result<()> {
+fn run_cargo_build(
+    root: &Path,
+    target: &str,
+    package: &str,
+    release: bool,
+    verbose: bool,
+) -> Result<()> {
     let mut cmd = Command::new("cargo");
     cmd.current_dir(root)
         .arg("build")
@@ -294,10 +287,17 @@ fn run_cargo_build(root: &Path, target: &str, package: &str, release: bool) -> R
         cmd.arg("--release");
     }
 
-    run_command(&mut cmd, "cargo build")
+    process::run_command(&mut cmd, "cargo build", verbose)?;
+    Ok(())
 }
 
-fn run_wasm_opt(root: &Path, opt_args: &[String], input: &Path, output: &Path) -> Result<()> {
+fn run_wasm_opt(
+    root: &Path,
+    opt_args: &[String],
+    input: &Path,
+    output: &Path,
+    verbose: bool,
+) -> Result<()> {
     let mut cmd = Command::new("wasm-opt");
     cmd.current_dir(root);
 
@@ -307,10 +307,11 @@ fn run_wasm_opt(root: &Path, opt_args: &[String], input: &Path, output: &Path) -
 
     cmd.arg("-o").arg(output).arg(input);
 
-    run_command(&mut cmd, "wasm-opt")
+    process::run_command(&mut cmd, "wasm-opt", verbose)?;
+    Ok(())
 }
 
-fn run_copy_rules(root: &Path, rules: &[CopyRule]) -> Result<()> {
+fn run_copy_rules(root: &Path, rules: &[CopyRule]) -> Result<usize> {
     for rule in rules {
         let from = root.join(&rule.from);
         let to = root.join(&rule.to);
@@ -323,26 +324,7 @@ fn run_copy_rules(root: &Path, rules: &[CopyRule]) -> Result<()> {
             );
         }
 
-        println!(
-            "[infinity-msfs] copying {} -> {}",
-            from.display(),
-            to.display()
-        );
-
         util::copy_file(&from, &to)?;
     }
-    Ok(())
-}
-
-fn run_command(cmd: &mut Command, label: &str) -> Result<()> {
-    println!("[infinity-msfs] running: {cmd:?}");
-
-    let status = cmd
-        .status()
-        .with_context(|| format!("failed to start {label}"))?;
-
-    if !status.success() {
-        bail!("{label} failed with status {status}");
-    }
-    Ok(())
+    Ok(rules.len())
 }
