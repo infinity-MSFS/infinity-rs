@@ -1,5 +1,5 @@
-use msfs::io::{self, File, OpenFlags};
-use msfs::prelude::*;
+use infinity_rs::io::{self, File, OpenFlags};
+use infinity_rs::prelude::*;
 
 const L_ENABLED: &str = "L:INFINITY_IO_DEMO_ENABLED";
 const L_DO_READ: &str = "L:INFINITY_IO_DEMO_DO_READ";
@@ -234,7 +234,7 @@ impl System for IoFullApiSystem {
     }
 }
 
-msfs::export_system!(
+infinity_rs::export_system!(
     name = io_full_api,
     state = IoFullApiSystem,
     ctor = IoFullApiSystem::new()

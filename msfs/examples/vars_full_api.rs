@@ -6,8 +6,8 @@
 //! - Writing to LVars (`set`, `set_target`)
 //! - Struct sugar via `#[derive(VarStruct)]`
 
-use msfs::prelude::*;
-use msfs::{
+use infinity_rs::prelude::*;
+use infinity_rs::{
     sys::{FS_OBJECT_ID_USER_AIRCRAFT, FS_OBJECT_ID_USER_CURRENT},
     vars::{AVar, VarParamArray1, empty_param_array},
 };
@@ -208,7 +208,7 @@ impl System for VarsFullApiSystem {
     }
 }
 
-msfs::export_system!(
+infinity_rs::export_system!(
     name = vars_full_api,
     state = VarsFullApiSystem,
     ctor = VarsFullApiSystem::new()

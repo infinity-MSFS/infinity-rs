@@ -1,8 +1,8 @@
 //! for users that want to use a more abstracted API, the io::fs module provides a more rust-like feel for file io while still maintaining most of the power of the full API.
 //! this example demonstrates reading and writing files when a L var changes
 //!
-use msfs::io::fs;
-use msfs::prelude::*;
+use infinity_rs::io::fs;
+use infinity_rs::prelude::*;
 
 const L_GO: &str = "L:INFINITY_FS_DEMO_GO";
 const L_STATUS: &str = "L:INFINITY_FS_DEMO_STATUS";
@@ -110,7 +110,7 @@ impl System for FsDemoSystem {
     }
 }
 
-msfs::export_system!(
+infinity_rs::export_system!(
     name = fs_demo,
     state = FsDemoSystem,
     ctor = FsDemoSystem::new()

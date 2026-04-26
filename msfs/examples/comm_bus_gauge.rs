@@ -1,6 +1,6 @@
 // This example shows how a user can click on a gauge and have it fire a comm bus event.
 
-use msfs::prelude::*;
+use infinity_rs::prelude::*;
 
 const EVT_TOGGLE: &str = "infinity.demo/toggle";
 
@@ -63,7 +63,7 @@ impl Gauge for ToggleGauge {
     }
 }
 
-msfs::export_gauge!(
+infinity_rs::export_gauge!(
     name = toggle_gauge,
     state = ToggleGauge,
     ctor = ToggleGauge::new()

@@ -2,17 +2,20 @@
 
 Safe, idiomatic Rust bindings for the **Microsoft Flight Simulator 2024 (MSFS 2024) WASM SDK**.
 
-Write MSFS gauges and systems in Rust — with full access to SimVars, the Comm Bus, async HTTP, file I/O, and NanoVG rendering. More SDK APIs (events, weather, flight plan, charts, and more) are actively being bound — see the [Work in Progress](#work-in-progress) section.
+Write MSFS gauges and systems in Rust with safe, idiomatic wrappers over the entire WASM SDK surface — SimVars, Comm Bus, async HTTP, file I/O, NanoVG rendering, simulation events, the flow lifecycle, map views (with weather radar / terrain), airport charts, VFX, and the EFB planned route channel.
 
 ---
 
 ## Workspace Layout
 
-| Crate | Description |
-|---|---|
-| `msfs` | Main bindings crate — re-exports everything you need |
-| `msfs_derive` | Proc-macro helpers (`#[derive(VarStruct)]`) |
-| `msfs_sdk` | Build helper that locates the installed MSFS 2024 SDK |
+| Crate | Package name | Description |
+|---|---|---|
+| `msfs/` | `infinity-rs` | Main bindings crate — re-exports everything you need |
+| `msfs_derive/` | `msfs_derive` | Proc-macro helpers (`#[derive(VarStruct)]`) |
+| `msfs_sdk/` | `msfs_sdk` | Build helper that locates the installed MSFS 2024 SDK |
+| `build-tools/` | `infinity-msfs` | CLI for building / packaging WASM modules |
+
+> The lib crate is named **`infinity-rs`** (Rust path: `infinity_rs`). It used to be `msfs`, which collided with the FlyByWire crate of the same name; the rename in `0.2.0` is intentionally breaking. Update imports from `use msfs::...` to `use infinity_rs::...`, and `msfs::export_gauge!` / `msfs::export_system!` to `infinity_rs::export_gauge!` / `infinity_rs::export_system!`.
 
 ---
 
@@ -35,8 +38,14 @@ Add the crate to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-msfs = { path = "path/to/infinity-rs/msfs" }
+infinity-rs = { path = "path/to/infinity-rs/msfs" }
 msfs_derive = { path = "path/to/infinity-rs/msfs_derive" }  # only needed for VarStruct
+```
+
+In code:
+
+```rust
+use infinity_rs::prelude::*;
 ```
 
 Set the SDK environment variable before building:
@@ -112,7 +121,7 @@ Everything in MSFS runs as either a **System** or a **Gauge**. Implement the cor
 **System** — logic-only, no rendering:
 
 ```rust
-use msfs::prelude::*;
+use infinity_rs::prelude::*;
 
 pub struct MySystem { /* ... */ }
 
@@ -122,7 +131,7 @@ impl System for MySystem {
     fn kill(&mut self, ctx: &Context) -> bool { true }
 }
 
-msfs::export_system!(
+infinity_rs::export_system!(
     name  = my_system,
     state = MySystem,
     ctor  = MySystem::new(),
@@ -132,7 +141,7 @@ msfs::export_system!(
 **Gauge** — rendered panel element with optional mouse input:
 
 ```rust
-use msfs::prelude::*;
+use infinity_rs::prelude::*;
 
 pub struct MyGauge { /* ... */ }
 
@@ -145,7 +154,7 @@ impl Gauge for MyGauge {
     fn mouse(&mut self, _ctx: &Context, x: f32, y: f32, flags: i32) { /* optional */ }
 }
 
-msfs::export_gauge!(
+infinity_rs::export_gauge!(
     name  = my_gauge,
     state = MyGauge,
     ctor  = MyGauge::new(),
@@ -158,12 +167,12 @@ The macros emit the correctly named `extern "C"` entry points expected by the si
 
 ## Features
 
-### SimVars — `msfs::vars`
+### SimVars — `infinity_rs::vars`
 
 Read and write simulation variables via `AVar` (A-vars) and `LVar` (L-vars).
 
 ```rust
-use msfs::vars::{AVar, LVar};
+use infinity_rs::vars::{AVar, LVar};
 
 // A-var: read-only aircraft variable
 let airspeed = AVar::new("AIRSPEED INDICATED", "Knots")?;
@@ -178,7 +187,7 @@ let val = flag.get()?;
 **Indexed A-vars** (e.g. per-engine data):
 
 ```rust
-use msfs::vars::{AVar, VarParamArray1};
+use infinity_rs::vars::{AVar, VarParamArray1};
 
 let eng_rpm = AVar::new("GENERAL ENG RPM", "RPM")?;
 let rpm = eng_rpm.get_with(VarParamArray1::new(1), Default::default())?; // engine 1
@@ -212,12 +221,12 @@ println!("Alt: {} ft  Hdg: {}°  ENG1: {} RPM", snapshot.altitude_ft, snapshot.h
 
 ---
 
-### Comm Bus — `msfs::comm_bus`
+### Comm Bus — `infinity_rs::comm_bus`
 
 Send and receive binary messages between WASM modules, JavaScript, and the sim.
 
 ```rust
-use msfs::prelude::*;
+use infinity_rs::prelude::*;
 
 // Subscribe to a named event
 let _sub = Subscription::subscribe("my.module/event", |bytes| {
@@ -243,12 +252,12 @@ Subscriptions automatically unsubscribe when dropped.
 
 ---
 
-### HTTP Networking — `msfs::network`
+### HTTP Networking — `infinity_rs::network`
 
 Make asynchronous HTTP GET and POST requests from within a WASM module.
 
 ```rust
-use msfs::prelude::*;
+use infinity_rs::prelude::*;
 
 let params = HttpParams {
     headers: vec!["Accept: application/json".to_string()],
@@ -268,12 +277,12 @@ Callbacks are invoked on the next simulator update tick after the response arriv
 
 ---
 
-### File I/O — `msfs::io`
+### File I/O — `infinity_rs::io`
 
-#### High-level API (`msfs::io::fs`)
+#### High-level API (`infinity_rs::io::fs`)
 
 ```rust
-use msfs::io::fs;
+use infinity_rs::io::fs;
 
 // Async read — callback fires when data is ready
 let req = fs::read("\\work/config.json", |data| {
@@ -288,7 +297,7 @@ if req.is_done() { /* ... */ }
 if req.has_error() { eprintln!("{:?}", req.last_error()); }
 ```
 
-#### Low-level API (`msfs::io`)
+#### Low-level API (`infinity_rs::io`)
 
 Full control via `OpenFile`, `IoRequest`, and `OpenFlags` for advanced use cases.
 
@@ -296,13 +305,13 @@ Full control via `OpenFile`, `IoRequest`, and `OpenFlags` for advanced use cases
 
 ---
 
-### NanoVG Rendering — `msfs::nvg`
+### NanoVG Rendering — `infinity_rs::nvg`
 
 Vector graphics rendering inside a `Gauge` using the NanoVG API.
 
 ```rust
-use msfs::nvg::*;
-use msfs::prelude::*;
+use infinity_rs::nvg::*;
+use infinity_rs::prelude::*;
 
 // In Gauge::init
 let nvg = NvgContext::new(ctx).expect("NVG init failed");
@@ -335,6 +344,24 @@ nvg.frame(win_w, win_h, px_ratio, |nvg| {
 
 ---
 
+### Flow API — `infinity_rs::flow`
+Subscribe to simulation lifecycle events (flight load, teleport start/done, replay boundaries, plane crash, …). Useful for resetting state on flight reload or pausing logic across slew/back-on-track windows. Subscriptions auto-unregister on `Drop`.
+
+### Event API — `infinity_rs::events`
+Subscribe to and trigger named simulation events (`KEY_TOGGLE_MASTER_BATTERY`, etc.) with typed parameter arguments via `FsParamArg`.
+
+### Map Views — `infinity_rs::map_view`
+`MapView` wraps `fsMapView*`: spawn a host-side map texture, configure aerial / altitude shading, follow mode, isolines, and an integrated weather radar (top / horizontal / vertical with custom rain-rate color ramps and cone angle). `MapView::image_pattern(...)` hands the texture straight to NanoVG so you can paint it through any gauge.
+
+### Charts — `infinity_rs::charts`
+Async access to the `fsCharts*` API. `get_index → get_pages → get_page_image` returns a `ChartImage` whose host id can be sampled by NanoVG via `nvg_pattern(...)`. `ChartIndex` and `ChartPages` are owned wrappers that release the host allocations on `Drop`; ref-views (`ChartCategoryRef`, `ChartMetadataRef`, `ChartPageRef`) decode strings as `&str` borrowed from the owner.
+
+### VFX — `infinity_rs::vfx`
+Spawn particle effects in the world (`spawn_in_world`) or attached to a sim object node (`spawn_on_sim_object`) with optional `VfxParam { name, rpn }` graph bindings. `VfxInstance` owns the host id and destroys it on `Drop`; `leak()` detaches if the host should keep emitting after the handle goes away.
+
+### Planned Route — `infinity_rs::planned_route`
+EFB / route-broadcast integration. `current_efb_route()` borrows the route the EFB currently holds; `subscribe_broadcast(...)` listens for pushes; `subscribe_requests(...)` receives `RouteRequest` handles when other modules ask for a route, and you reply via `request.respond(route)`. Both subscriptions auto-unregister on `Drop`.
+
 ## Examples
 
 All examples are in [`msfs/examples/`](msfs/examples/).
@@ -349,45 +376,65 @@ All examples are in [`msfs/examples/`](msfs/examples/).
 | [`network_fetch_system.rs`](msfs/examples/network_fetch_system.rs) | Fetch JSON over HTTP on a Comm Bus trigger |
 | [`network_post_system.rs`](msfs/examples/network_post_system.rs) | HTTP POST with a request body |
 | [`nvg_render.rs`](msfs/examples/nvg_render.rs) | Attitude indicator rendered with NanoVG |
+| [`flow_system.rs`](msfs/examples/flow_system.rs) | Adjust logic based on sim events using the Flow API |
+| [`event_api.rs`](msfs/examples/event_api.rs) | Subscribe to and trigger simulation events |
+| [`map_view_weather_radar.rs`](msfs/examples/map_view_weather_radar.rs) | Texture-backed weather radar gauge with rain-rate color ramp + range overlay |
+| [`charts_gauge.rs`](msfs/examples/charts_gauge.rs) | Async charts pipeline (index → pages → image) painted through NanoVG |
+| [`vfx_system.rs`](msfs/examples/vfx_system.rs) | Sim-object-attached particle effect driven by N1 via an RPN-bound graph param |
+| [`planned_route_system.rs`](msfs/examples/planned_route_system.rs) | Subscribe to EFB route broadcasts and respond to route requests |
 
 ---
 
-## Work in Progress
-
-The following SDK headers are planned for binding but are not yet implemented. Tracking them here so users know what to expect.
-
-| SDK Header | Module (planned) | Description |
-|---|---|---|
-| `MSFS_Events.h` | `msfs::events` | Subscribe to and fire named simulation events |
-| `MSFS_MapView.h` | `msfs::map_view` | Render interactive map views in NVG (weather/terrain radars) |
-| `MSFS_Vfx.h` | `msfs::vfx` | Spawn VFX taht are defined |
-| `MSFS_Weather.h` | `msfs::weather` | Read and manipulate weather conditions and METAR data |
-| `MSFS_PlannedRoute.h` | `msfs::planned_route` | Work with the native flight plans |
-| `MSFS_Charts.h` | `msfs::charts` | Fetch built in FAA and LIDO charts from sim |
-
-If you need one of these APIs before official bindings land, the raw FFI symbols are already available through `msfs::sys` (generated by bindgen from the SDK headers at build time).
-
----
 
 ## Crate Structure
 
 ```
 msfs/src/
-├── lib.rs          — top-level re-exports
-├── prelude.rs      — convenient glob import
-├── modules.rs      — System / Gauge traits
-├── exports.rs      — export_system! / export_gauge! macros
-├── context.rs      — FsContext wrapper
-├── types.rs        — GaugeDraw, GaugeInstall, SystemInstall
-├── sys.rs          — raw bindgen bindings
-├── vars/           — AVar, LVar, VarKind, VarStruct
-├── comm_bus/       — Subscription, BroadcastFlags, commbus_call
-├── network/        — http_request, HttpParams, Method, HttpResponse
-├── io/             — File I/O (low-level + fs high-level)
-├── nvg/            — NanoVG: NvgContext, Shape, Color, Transform, …
-├── events/         — Sim event helpers
-├── utils/          — Internal utilities
-└── bindgen_support/— Headers consumed by the build script
+├── lib.rs            — top-level re-exports
+├── prelude.rs        — convenient glob import
+├── modules.rs        — System / Gauge traits
+├── exports.rs        — export_system! / export_gauge! macros
+├── context.rs        — FsContext wrapper
+├── types.rs          — GaugeDraw, GaugeInstall, SystemInstall
+├── sys.rs            — raw bindgen bindings
+├── abi.rs            — ABI shims for host entry points
+├── vars/             — AVar, LVar, VarKind, VarStruct
+├── comm_bus/         — Subscription, BroadcastFlags, commbus_call
+├── network/          — http_request, HttpParams, Method, HttpResponse
+├── io/               — File I/O (low-level + fs high-level)
+├── nvg/              — NanoVG: NvgContext, Shape, Color, Transform, …
+├── events/           — Sim event helpers (subscribe / trigger / FsParamArg)
+├── flow/             — Flow lifecycle subscription
+├── map_view.rs       — MapView (fsMapView*) — weather radar / terrain / 3D
+├── charts.rs         — Async charts API (fsCharts*) with owned wrappers
+├── vfx.rs            — VfxInstance (fsVfx*) with RAII destroy
+├── planned_route.rs  — EFB planned-route broadcast + request channels
+├── host/             — Native testing shims (non-wasm targets)
+├── utils/            — Internal utilities
+└── bindgen_support/  — Headers consumed by the build script
 ```
 
+---
 
+## SDK Coverage
+
+Every public header in `MSFS 2024 SDK/WASM/include/MSFS/` is wrapped:
+
+| Header | Module |
+|---|---|
+| `MSFS.h`, `MSFS_Core.h`, `MSFS_Utils.h` | `infinity_rs::sys`, internal helpers |
+| `MSFS_Vars.h` | `infinity_rs::vars` |
+| `MSFS_CommBus.h` | `infinity_rs::comm_bus` |
+| `MSFS_Network.h` | `infinity_rs::network` |
+| `MSFS_IO.h` | `infinity_rs::io` |
+| `MSFS_Render.h`, `Render/nanovg.h` | `infinity_rs::nvg` |
+| `MSFS_GaugeContext.h`, `MSFS_SystemContext.h` | `infinity_rs::context`, `infinity_rs::modules` |
+| `MSFS_Events.h`, `Types/MSFS_EventsEnum.h` | `infinity_rs::events` |
+| `MSFS_Flow.h` | `infinity_rs::flow` |
+| `MSFS_MapView.h` | `infinity_rs::map_view` |
+| `MSFS_Charts.h` | `infinity_rs::charts` |
+| `MSFS_Vfx.h` | `infinity_rs::vfx` |
+| `MSFS_PlannedRoute.h`, `MSFS_FlightPlan.h` | `infinity_rs::planned_route` (FlightPlan types re-exposed via `sys`) |
+| `MSFS_Weather.h` | re-exported via `infinity_rs::sys` (typed wrapper TBD) |
+| `Legacy/gauges.h` | `infinity_rs::sys` (legacy gauge ABI) |
+| `SimConnect.h` | `infinity_rs::sys` under the `simconnect` feature (native only) |

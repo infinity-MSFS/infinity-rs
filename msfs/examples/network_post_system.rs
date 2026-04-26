@@ -1,7 +1,7 @@
 // This example demonstrates a click handler triggering a POST request, and then the comm bus receiving the response and broadcasting it to any gauges that want it.
 // A Lvar is set when request is pending and cleared when the response is received.
 
-use msfs::prelude::*;
+use infinity_rs::prelude::*;
 
 const EVT_POST_RESULT: &str = "infinity.demo/telemetry_post_result";
 
@@ -76,7 +76,7 @@ impl Gauge for TelemetryGauge {
     }
 }
 
-msfs::export_gauge!(
+infinity_rs::export_gauge!(
     name = telemetry_gauge,
     state = TelemetryGauge,
     ctor = TelemetryGauge::new()

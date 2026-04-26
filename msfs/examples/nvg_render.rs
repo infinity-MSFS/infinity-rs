@@ -9,8 +9,8 @@
 //!
 //! For more details on the NVG API bindings, see the readme in the nvg module.
 
-use msfs::nvg::*;
-use msfs::prelude::*;
+use infinity_rs::nvg::*;
+use infinity_rs::prelude::*;
 use std::f32::consts::PI;
 
 pub struct AttitudeGauge {
@@ -122,7 +122,7 @@ impl Gauge for AttitudeGauge {
     }
 }
 
-msfs::export_gauge!(
+infinity_rs::export_gauge!(
     name = attitude_gauge,
     state = AttitudeGauge,
     ctor = AttitudeGauge::new()

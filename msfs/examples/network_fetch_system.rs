@@ -1,6 +1,6 @@
 // Example system that fetches JSON on comm bus command, stores it in a LVar and publishes the body to the comm bus when done.
 
-use msfs::prelude::*;
+use infinity_rs::prelude::*;
 
 const EVT_FETCH: &str = "infinity.demo/fetch_config";
 const EVT_CONFIG: &str = "infinity.demo/config_bytes";
@@ -68,7 +68,7 @@ impl System for NetworkFetchSystem {
     }
 }
 
-msfs::export_system!(
+infinity_rs::export_system!(
     name = network_fetch,
     state = NetworkFetchSystem,
     ctor = NetworkFetchSystem::new()

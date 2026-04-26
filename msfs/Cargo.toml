@@ -1,7 +1,8 @@
 [package]
-name = "msfs"
-version = "0.1.0"
+name = "infinity-rs"
+version = "0.2.0"
 edition = "2024"
+description = "Safe, idiomatic Rust bindings for the MSFS 2024 WASM SDK."
 
 [features]
 default = []

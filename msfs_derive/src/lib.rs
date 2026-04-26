@@ -209,14 +209,14 @@ fn derive_var_struct_impl(input: DeriveInput) -> syn::Result<TokenStream> {
         let unit_lit = LitStr::new(&spec.unit, field_ident.span());
 
         let var_ty = match spec.kind {
-            VarKindSel::A => quote!(::msfs::vars::a_var::AVar),
-            VarKindSel::L => quote!(::msfs::vars::l_var::LVar),
+            VarKindSel::A => quote!(::infinity_rs::vars::a_var::AVar),
+            VarKindSel::L => quote!(::infinity_rs::vars::l_var::LVar),
         };
 
         quote! {
             #[inline]
-            fn #helper_fn_ident() -> ::msfs::vars::VarResult<#var_ty> {
-                static #cell_ident: ::std::sync::OnceLock<::msfs::vars::VarResult<#var_ty>> =
+            fn #helper_fn_ident() -> ::infinity_rs::vars::VarResult<#var_ty> {
+                static #cell_ident: ::std::sync::OnceLock<::infinity_rs::vars::VarResult<#var_ty>> =
                     ::std::sync::OnceLock::new();
 
                 match #cell_ident.get_or_init(|| #var_ty::new(#name_lit, #unit_lit)) {
@@ -272,12 +272,12 @@ fn derive_var_struct_impl(input: DeriveInput) -> syn::Result<TokenStream> {
             #(#helpers)*
 
             #[inline]
-            pub fn get() -> ::msfs::vars::VarResult<Self> {
+            pub fn get() -> ::infinity_rs::vars::VarResult<Self> {
                 Ok(Self { #(#get_inits,)* })
             }
 
             #[inline]
-            pub fn set(&self) -> ::msfs::vars::VarResult<()> {
+            pub fn set(&self) -> ::infinity_rs::vars::VarResult<()> {
                 #(#set_stmts)*
                 Ok(())
             }
@@ -337,8 +337,8 @@ fn parse_target_str(s: &str, span: proc_macro2::Span) -> syn::Result<VarTargetSe
 
 fn target_to_tokens(t: VarTargetSel) -> proc_macro2::TokenStream {
     match t {
-        VarTargetSel::UserAircraft => quote!(::msfs::sys::FS_OBJECT_ID_USER_AIRCRAFT),
-        VarTargetSel::UserAvatar => quote!(::msfs::sys::FS_OBJECT_ID_USER_AVATAR),
-        VarTargetSel::UserCurrent => quote!(::msfs::sys::FS_OBJECT_ID_USER_CURRENT),
+        VarTargetSel::UserAircraft => quote!(::infinity_rs::sys::FS_OBJECT_ID_USER_AIRCRAFT),
+        VarTargetSel::UserAvatar => quote!(::infinity_rs::sys::FS_OBJECT_ID_USER_AVATAR),
+        VarTargetSel::UserCurrent => quote!(::infinity_rs::sys::FS_OBJECT_ID_USER_CURRENT),
     }
 }

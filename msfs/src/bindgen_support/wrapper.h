@@ -6,11 +6,18 @@
 #include <MSFS/MSFS_GaugeContext.h>
 #include <MSFS/MSFS_SystemContext.h>
 #include <MSFS/MSFS_Vars.h>
+#include <MSFS/MSFS_Flow.h>
 #include <MSFS/MSFS_Events.h>
+#include <MSFS/Types/MSFS_EventsEnum.h>
+#include <MSFS/MSFS_PlannedRoute.h>
+#include <MSFS/MSFS_MapView.h>
+#include <MSFS/MSFS_Weather.h>
+#include <MSFS/MSFS_Charts.h>
 #include <MSFS/MSFS_Core.h>
 #include <MSFS/MSFS_Utils.h>
 #include <MSFS/MSFS_IO.h>
 #include <MSFS/Render/nanovg.h>
+#include <MSFS/MSFS_Vfx.h>
 #ifdef USE_SIMCONNECT
 #include <SimConnect.h>
 #endif

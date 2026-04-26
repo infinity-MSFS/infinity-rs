@@ -1,4 +1,4 @@
-use msfs::prelude::*;
+use infinity_rs::prelude::*;
 
 const EVT_CMD: &str = "infinity.demo/system_cmd";
 const EVT_STATE: &str = "infinity.demo/system_state";
@@ -79,7 +79,7 @@ impl System for CommbusStateSystem {
     }
 }
 
-msfs::export_system!(
+infinity_rs::export_system!(
     name = commbus_state_system,
     state = CommbusStateSystem,
     ctor = CommbusStateSystem::new()

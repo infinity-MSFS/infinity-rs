@@ -1,12 +1,12 @@
 //! abstractions for file IO to feel more like rust and less like the raw C API
 //! # Examples
 //! ```no_run
-//! use msfs::fs::{self, ReadRequest, WriteRequest};
+//! use infinity_rs::fs::{self, ReadRequest, WriteRequest};
 //!
 //! // Fire-and-forget read
 //! let req = fs::read("\\work/config.json", |data| {
 //!     let text = String::from_utf8_lossy(&data);
-//!     msfs::log!("got config: {text}");
+//!     infinity_rs::log!("got config: {text}");
 //! })?;
 //!
 //! // Poll in your update loop

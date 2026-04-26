@@ -501,6 +501,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "infinity-rs"
+version = "0.2.0"
+dependencies = [
+ "bindgen",
+ "bitflags 1.3.2",
+ "cc",
+ "msfs_derive",
+ "msfs_sdk",
+ "paste",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "is_terminal_polyfill"
 version = "1.70.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -597,20 +611,6 @@ checksum = "1fa76a2c86f704bdb222d66965fb3d63269ce38518b83cb0575fca855ebb6316"
 dependencies = [
  "adler2",
  "simd-adler32",
-]
-
-[[package]]
-name = "msfs"
-version = "0.1.0"
-dependencies = [
- "bindgen",
- "bitflags 1.3.2",
- "cc",
- "msfs_derive",
- "msfs_sdk",
- "paste",
- "serde",
- "serde_json",
 ]
 
 [[package]]
