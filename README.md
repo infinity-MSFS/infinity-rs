@@ -428,6 +428,15 @@ msfs/src/
 
 ---
 
+## Projects Using infinity-rs
+
+| Project | Developer |
+|---|---|
+| **T-38 Talon** | Aero Dynamics |
+| **DC-10** | Aero Dynamics |
+
+---
+
 ## SDK Coverage
 
 Every public header in `MSFS 2024 SDK/WASM/include/MSFS/` is wrapped:
