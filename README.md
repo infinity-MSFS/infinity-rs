@@ -21,14 +21,26 @@ Write MSFS gauges and systems in Rust with safe, idiomatic wrappers over the ent
 
 ## Prerequisites
 
+### WASM Builds (normal usage)
+
+The `infinity-msfs` build tools work on **any platform** (Windows, macOS, Linux) and do **not** require the MSFS 2024 SDK. The necessary MSFS headers and WASI sysroot are bundled and installed automatically.
+
+| Requirement | Notes |
+|---|---|
+| Rust nightly / `wasm32-wasip1` target | `rustup target add wasm32-wasip1` |
+| `clang` + `llvm-ar` | Required for WASM compilation; install via [LLVM](https://releases.llvm.org/) or your system package manager |
+| `wasm-opt` | Part of [Binaryen](https://github.com/WebAssembly/binaryen); only required when `wasm_opt.enabled = true` in your config |
+
+### SimConnect / Native Builds
+
+The MSFS 2024 SDK is **only** required when building for a native target with SimConnect support (e.g. external tooling that talks to a running sim instance):
+
 | Requirement | Notes |
 |---|---|
 | **MSFS 2024 SDK** | Install via the MSFS Dev Mode or the standalone SDK installer |
 | `MSFS2024_SDK` env var | Must point to your SDK root (e.g. `C:\MSFS 2024 SDK`) |
-| Rust nightly / `wasm32-wasip1` target | `rustup target add wasm32-wasip1` |
-| `clang` + `llvm-ar` | Required by the build script for WASM compilation |
 
-The build script automatically detects whether you are targeting `wasm32` and adjusts compiler flags, NanoVG compilation, and linking accordingly. For native builds (testing / tooling) it links against the SimConnect SDK instead.
+The build script automatically detects whether you are targeting `wasm32` and adjusts compiler flags, NanoVG compilation, and linking accordingly.
 
 ---
 
