@@ -35,6 +35,24 @@ copy = [
   { from = "systems/demo-system/config.json", to = "build/msfs/systems/config.json" }
 ]
 
+# Native (host-target) build that links against SimConnect. Only built
+# when running on Windows; silently skipped on Linux/macOS since the
+# SimConnect import library is Windows-only.
+#
+# `kind = "native"` switches the build to the host triple (no --target),
+# skips wasm-opt, and produces an .exe instead of a .wasm. `features`
+# are passed through to `cargo build --features`.
+[[packages]]
+package = "demo-native"
+bin = "demo_native"
+kind = "native"
+features = ["simconnect"]
+out_dir = "build/native"
+
+# `SimConnect.dll` is copied next to the built .exe automatically for
+# native packages with `features = ["simconnect"]` on Windows. No manual
+# copy rule is needed for the runtime DLL.
+
 [wasm_opt]
 enabled = true
 args = [

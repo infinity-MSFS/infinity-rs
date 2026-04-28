@@ -31,7 +31,7 @@ impl TelemetryGauge {
         };
 
         // We currently cannot pass var ownership, so we create a new one for the callback to use. This has no effect on the gauge since it's just a handle to an LVar with a known name.
-        let mut l_for_cb = LVar::new("L:INFINITY_TELEMETRY_PENDING", "Bool")
+        let l_for_cb = LVar::new("L:INFINITY_TELEMETRY_PENDING", "Bool")
             .expect("Failed to create LVar for callback");
 
         let _ = http_request(
@@ -52,20 +52,20 @@ impl TelemetryGauge {
 }
 
 impl Gauge for TelemetryGauge {
-    fn init(&mut self, ctx: &Context, install: &mut GaugeInstall) -> bool {
+    fn init(&mut self, _ctx: &Context, _install: &mut GaugeInstall) -> bool {
         let _ = self.l_pending.set(0.0);
         true
     }
 
-    fn update(&mut self, ctx: &Context, dt: f32) -> bool {
+    fn update(&mut self, _ctx: &Context, _dt: f32) -> bool {
         true
     }
 
-    fn draw(&mut self, ctx: &Context, draw: &mut GaugeDraw) -> bool {
+    fn draw(&mut self, _ctx: &Context, _draw: &mut GaugeDraw) -> bool {
         true
     }
 
-    fn kill(&mut self, ctx: &Context) -> bool {
+    fn kill(&mut self, _ctx: &Context) -> bool {
         true
     }
 

@@ -22,7 +22,7 @@ impl FlowSystem {
 }
 
 impl System for FlowSystem {
-    fn init(&mut self, ctx: &Context, install: &SystemInstall) -> bool {
+    fn init(&mut self, _ctx: &Context, _install: &SystemInstall) -> bool {
         let state = self.flow_state.clone();
 
         self.flow = flow_subscribe(move |msg| {
@@ -45,7 +45,7 @@ impl System for FlowSystem {
         true
     }
 
-    fn update(&mut self, ctx: &Context, dt: f32) -> bool {
+    fn update(&mut self, _ctx: &Context, _dt: f32) -> bool {
         let mut flow = self.flow_state.borrow_mut();
 
         if flow.needs_resync {
@@ -62,7 +62,7 @@ impl System for FlowSystem {
         true
     }
 
-    fn kill(&mut self, ctx: &Context) -> bool {
+    fn kill(&mut self, _ctx: &Context) -> bool {
         self.flow = None;
         true
     }

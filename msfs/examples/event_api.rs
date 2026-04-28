@@ -1,23 +1,23 @@
 use infinity_rs::{events, prelude::*, sys::*, utils::FsParamArg};
 
-pub struct EvemtSystem {
+pub struct EventSystem {
     event_sub: Option<events::Subscription>,
 }
 
-impl EvemtSystem {
+impl EventSystem {
     pub fn new() -> Self {
         Self { event_sub: None }
     }
 }
 
-impl Default for EvemtSystem {
+impl Default for EventSystem {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl System for EvemtSystem {
-    fn init(&mut self, ctx: &Context, install: &SystemInstall) -> bool {
+impl System for EventSystem {
+    fn init(&mut self, _ctx: &Context, _install: &SystemInstall) -> bool {
         self.event_sub = Some(events::subscribe(|event| {
             let event_id = event.id;
             let first_param = event.params.first();
@@ -41,7 +41,7 @@ impl System for EvemtSystem {
             }
 
             if event_id == KEY_TOGGLE_MASTER_BATTERY {
-                let battery_index = event.params.first_index().unwrap_or(1);
+                let _battery_index = event.params.first_index().unwrap_or(1);
             }
         }));
 
@@ -49,11 +49,11 @@ impl System for EvemtSystem {
         true
     }
 
-    fn update(&mut self, ctx: &Context, dt: f32) -> bool {
+    fn update(&mut self, _ctx: &Context, _dt: f32) -> bool {
         true
     }
 
-    fn kill(&mut self, ctx: &Context) -> bool {
+    fn kill(&mut self, _ctx: &Context) -> bool {
         true
     }
 }

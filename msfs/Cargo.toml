@@ -5,8 +5,14 @@ edition = "2024"
 description = "Safe, idiomatic Rust bindings for the MSFS 2024 WASM SDK."
 
 [features]
-default = []
-# Enable SimConnect bindings and linking (Windows only; requires the full MSFS SDK).
+default = ["wasm"]
+# Compile the MSFS WASM-runtime APIs (nvg, vfx, map view, comm bus, flow, io,
+# network, charts, planned route, events, vars, gauge/system entry points,
+# prelude). These call into symbols only provided by the MSFS WASM host, so
+# disable this feature for native builds.
+wasm = []
+# Enable SimConnect bindings. Works on both WASM (resolved by the host
+# runtime) and native Windows (linked against the SimConnect import lib).
 simconnect = []
 
 [dependencies]

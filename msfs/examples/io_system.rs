@@ -88,6 +88,7 @@ impl IoFullApiSystem {
     }
 
     /// Open a file, then issue an async read on the returned handle.
+    #[allow(dead_code)]
     fn start_read_two_step(&mut self) {
         self.read_file = None;
 

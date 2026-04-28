@@ -15,4 +15,4 @@ pub use paint::{FillStyle, Gradient, ImagePattern};
 pub use path::PathBuilder;
 pub use shape::Shape;
 pub use text::{GlyphPosition, TextBounds, TextMetrics, TextRow};
-pub use transform::Transform;
+pub use transform::{Transform, deg_to_rad, rad_to_deg};

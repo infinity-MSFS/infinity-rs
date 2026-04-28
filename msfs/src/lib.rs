@@ -1,29 +1,51 @@
+// `sys` is bindgen output mirroring C identifiers (camelCase types,
+// `dwFoo` fields, `Fs*_Fs*_*` enum constants). Allow them at the crate
+// root rather than peppering every match arm and accessor with attrs.
+#![allow(non_snake_case, non_camel_case_types, non_upper_case_globals)]
+
 // Re-export used by macros so downstream crates don't need a direct `paste` dependency.
 pub use paste as __paste;
 
 pub mod abi;
-pub mod charts;
-pub mod comm_bus;
-pub mod context;
-pub mod events;
-pub mod exports;
-pub mod flow;
-pub mod io;
-pub mod map_view;
-pub mod modules;
-pub mod network;
-pub mod planned_route;
-pub mod prelude;
-#[cfg(feature = "simconnect")]
-pub mod simconnect;
 pub mod sys;
 pub mod types;
-pub mod utils;
-pub mod vars;
-pub mod vfx;
 
-// New: host API indirection for native testing, plus a native NanoVG backend.
-#[cfg(not(target_arch = "wasm32"))]
-pub mod host;
+#[cfg(feature = "simconnect")]
+pub mod simconnect;
 
+// Modules below call into the MSFS WASM host runtime (`nvg*`, `fsIO*`,
+// `fsCommBus*`, `fsRender*`, …). They are gated behind the `wasm` feature
+// (default-on) so native consumers — e.g. SimConnect-only tools that link
+// against this crate — can opt out and avoid pulling unresolved externals.
+#[cfg(feature = "wasm")]
+pub mod charts;
+#[cfg(feature = "wasm")]
+pub mod comm_bus;
+#[cfg(feature = "wasm")]
+pub mod context;
+#[cfg(feature = "wasm")]
+pub mod events;
+#[cfg(feature = "wasm")]
+pub mod exports;
+#[cfg(feature = "wasm")]
+pub mod flow;
+#[cfg(feature = "wasm")]
+pub mod io;
+#[cfg(feature = "wasm")]
+pub mod map_view;
+#[cfg(feature = "wasm")]
+pub mod modules;
+#[cfg(feature = "wasm")]
+pub mod network;
+#[cfg(feature = "wasm")]
 pub mod nvg;
+#[cfg(feature = "wasm")]
+pub mod planned_route;
+#[cfg(feature = "wasm")]
+pub mod prelude;
+#[cfg(feature = "wasm")]
+pub mod utils;
+#[cfg(feature = "wasm")]
+pub mod vars;
+#[cfg(feature = "wasm")]
+pub mod vfx;

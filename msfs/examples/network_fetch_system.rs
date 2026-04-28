@@ -15,7 +15,7 @@ impl NetworkFetchSystem {
         let l_last_ok =
             LVar::new("L:INFINITY_FETCH_LAST_OK", "Bool").expect("Failed to create LVar");
 
-        let mut l_for_cb = LVar::new("L:INFINITY_FETCH_LAST_OK", "Bool")
+        let l_for_cb = LVar::new("L:INFINITY_FETCH_LAST_OK", "Bool")
             .expect("Failed to create LVar for callback");
 
         let sub = Subscription::subscribe(EVT_FETCH, move |_bytes| {
@@ -54,16 +54,16 @@ impl NetworkFetchSystem {
 }
 
 impl System for NetworkFetchSystem {
-    fn init(&mut self, ctx: &Context, install: &SystemInstall) -> bool {
+    fn init(&mut self, _ctx: &Context, _install: &SystemInstall) -> bool {
         let _ = self.l_last_ok.set(0.0);
         true
     }
 
-    fn update(&mut self, ctx: &Context, dt: f32) -> bool {
+    fn update(&mut self, _ctx: &Context, _dt: f32) -> bool {
         true
     }
 
-    fn kill(&mut self, ctx: &Context) -> bool {
+    fn kill(&mut self, _ctx: &Context) -> bool {
         true
     }
 }

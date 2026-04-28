@@ -4,4 +4,5 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 #![allow(deref_nullptr)]
+#![allow(unnecessary_transmutes)]
 include!(concat!(env!("OUT_DIR"), "/msfs-sys.rs"));

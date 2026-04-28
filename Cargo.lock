@@ -494,6 +494,7 @@ dependencies = [
  "indicatif",
  "msfs_sdk",
  "serde",
+ "serde_json",
  "tar",
  "thiserror",
  "toml",

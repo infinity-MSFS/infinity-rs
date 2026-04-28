@@ -2,12 +2,12 @@ use std::path::PathBuf;
 
 /// Version of the pinned SDK headers archive.
 /// Update this constant when a new pinned release is published.
-pub const SDK_HEADERS_VERSION: &str = "2024.1.0";
+pub const SDK_HEADERS_VERSION: &str = "2024.3.0";
 
 /// URL of the pinned SDK headers archive.
 /// Override at runtime with the `INFINITY_MSFS_SDK_URL` environment variable.
 pub const SDK_HEADERS_URL: &str =
-    "https://cdn.infinity-simulations.com/msfs-sdk-headers-v2024.1.0.tar.gz";
+    "https://cdn.infinity-simulations.com/msfs-sdk-headers-v2024.3.0.tar.gz";
 
 /// Returns the path to the MSFS SDK root, checking in this order:
 ///

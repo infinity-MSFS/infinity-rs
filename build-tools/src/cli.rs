@@ -28,6 +28,10 @@ pub enum Commands {
     /// build script.  Upload it to your CDN/R2 bucket and point
     /// `SDK_HEADERS_URL` (in `msfs_sdk/src/lib.rs`) at the public URL.
     PackSdk(PackSdkArgs),
+    /// Run pre-flight checks for the build environment: rust toolchain,
+    /// `wasm32-wasip1` target, `wasm-opt` on PATH, cached SDK headers,
+    /// and SimConnect lib presence (when relevant).
+    Doctor,
 }
 
 #[derive(Debug, Args, Clone)]

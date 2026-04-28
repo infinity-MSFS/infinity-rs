@@ -37,7 +37,7 @@ impl AttitudeGauge {
 }
 
 impl Gauge for AttitudeGauge {
-    fn init(&mut self, ctx: &Context, install: &mut GaugeInstall) -> bool {
+    fn init(&mut self, ctx: &Context, _install: &mut GaugeInstall) -> bool {
         let nvg = match NvgContext::new(ctx) {
             Some(n) => n,
             None => return false,
@@ -49,11 +49,11 @@ impl Gauge for AttitudeGauge {
         true
     }
 
-    fn update(&mut self, ctx: &Context, dt: f32) -> bool {
+    fn update(&mut self, _ctx: &Context, _dt: f32) -> bool {
         true
     }
 
-    fn draw(&mut self, ctx: &Context, draw: &mut GaugeDraw) -> bool {
+    fn draw(&mut self, _ctx: &Context, draw: &mut GaugeDraw) -> bool {
         let nvg = match &self.nvg {
             Some(n) => n,
             None => return false,

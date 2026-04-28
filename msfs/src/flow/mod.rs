@@ -161,7 +161,7 @@ extern "C" fn flow_trampoline(
     event: FsFlowEvent,
     buf: *const c_char,
     buf_size: c_uint,
-    ctx: *mut c_void,
+    _ctx: *mut c_void,
 ) {
     let payload = if buf.is_null() || buf_size == 0 {
         Vec::new()

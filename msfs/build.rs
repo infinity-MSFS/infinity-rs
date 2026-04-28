@@ -19,19 +19,34 @@
             .include(format!("{msfs_sdk}/WASM/include"))
             .file(format!("{msfs_sdk}/WASM/src/MSFS/Render/nanovg.cpp"))
             .compile("nanovg");
+
+        // Link MSFS_WasmVersions.a so the resulting module is detected as
+        // an MSFS 2024 module (required for SimConnect and other 2024-era
+        // features). Without this the runtime falls back to MSFS 2020
+        // behavior.
+        // The SDK ships the file as `MSFS_WasmVersions.a` (no `lib` prefix),
+        // so the `+verbatim` modifier is required — without it rustc looks
+        // for `libMSFS_WasmVersions.a` and fails.
+        println!("cargo:rustc-link-search=native={msfs_sdk}/WASM/WasmVersions");
+        println!("cargo:rustc-link-lib=static:+verbatim=MSFS_WasmVersions.a");
     }
 
     {
-        println!("cargo:rerun-if-changed=src/bindgen_support/wrapper.h");
+        println!("cargo:rerun-if-changed=bindgen/wrapper.h");
+        println!("cargo:rerun-if-changed=bindgen/shims");
         let mut bindings = bindgen::Builder::default()
             .clang_arg(format!("-I{msfs_sdk}/WASM/include"))
-            .clang_arg(format!("-I{}", "src/bindgen_support"))
+            .clang_arg("-Ibindgen/shims")
             .clang_arg("-fms-extensions")
             .clang_arg("-fvisibility=default")
             .clang_arg("-xc++")
             .clang_arg("-std=c++17")
             .clang_arg("-v")
-            .header("src/bindgen_support/wrapper.h")
+            .header("bindgen/wrapper.h")
+            // Required under edition 2024: bindgen-generated `unsafe fn`s
+            // call other unsafe fns, which is now a hard error unless the
+            // body wraps them in an explicit `unsafe { … }` block.
+            .wrap_unsafe_ops(true)
             // .blocklist_function("nvgFillColor")
             // .blocklist_function("nvgFillPaint")
             // .blocklist_function("nvgStrokeColor")

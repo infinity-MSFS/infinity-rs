@@ -1,5 +1,4 @@
 ﻿use crate::sys;
-use std::ops;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(C)]
@@ -144,6 +143,7 @@ impl Color {
     }
 
     #[inline]
+    #[allow(dead_code)]
     pub(crate) fn from_raw(raw: sys::NVGcolor) -> Self {
         unsafe { std::mem::transmute(raw) }
     }

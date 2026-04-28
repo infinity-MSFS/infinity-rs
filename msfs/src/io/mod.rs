@@ -1,9 +1,7 @@
 use crate::sys::*;
 use std::{
-    f32::consts::E,
     ffi::CString,
     os::raw::{c_char, c_void},
-    ptr::NonNull,
 };
 
 pub mod fs;

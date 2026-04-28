@@ -11,17 +11,30 @@ use std::{
 };
 use tar::Builder;
 
-/// Files and directories (relative to the SDK root) that are required for a
-/// WASM build.  Each entry is (sdk-relative source path, archive path).
+/// Files and directories (relative to the SDK root) packed into the
+/// redistributable archive.  Each entry is (sdk-relative source path,
+/// archive path).
 ///
 /// Directories are packed recursively; single files are packed as-is.
-const WASM_ENTRIES: &[(&str, &str)] = &[
+///
+/// The archive contains everything required for both WASM gauge builds and
+/// Windows native builds that use SimConnect.  The SimConnect headers are
+/// needed on every platform (bindgen runs unconditionally when the
+/// `simconnect` feature is enabled), and the SimConnect lib/dll are needed
+/// at link time for native Windows builds.
+const SDK_ENTRIES: &[(&str, &str)] = &[
     ("WASM/wasi-sysroot", "WASM/wasi-sysroot"),
     ("WASM/include", "WASM/include"),
     (
         "WASM/src/MSFS/Render/nanovg.cpp",
         "WASM/src/MSFS/Render/nanovg.cpp",
     ),
+    // Required to mark the resulting .wasm as an MSFS 2024 module.
+    // Without it, runtime features like SimConnect fall back to 2020
+    // semantics.
+    ("WASM/WasmVersions", "WASM/WasmVersions"),
+    ("SimConnect SDK/include", "SimConnect SDK/include"),
+    ("SimConnect SDK/lib", "SimConnect SDK/lib"),
 ];
 
 pub fn run_pack_sdk(args: PackSdkArgs) -> Result<()> {
@@ -31,7 +44,7 @@ pub fn run_pack_sdk(args: PackSdkArgs) -> Result<()> {
     }
 
     // Validate that the expected subtrees are actually present.
-    for (rel, _) in WASM_ENTRIES {
+    for (rel, _) in SDK_ENTRIES {
         let candidate = sdk.join(rel);
         if !candidate.exists() {
             bail!(
@@ -88,8 +101,8 @@ pub fn run_pack_sdk(args: PackSdkArgs) -> Result<()> {
         bar.inc(1);
     }
 
-    let gz = tar.into_inner().context("failed to finalise tar archive")?;
-    gz.finish().context("failed to finalise gzip stream")?;
+    let gz = tar.into_inner().context("failed to finalize tar archive")?;
+    gz.finish().context("failed to finalize gzip stream")?;
 
     bar.finish_and_clear();
 
@@ -112,12 +125,12 @@ pub fn run_pack_sdk(args: PackSdkArgs) -> Result<()> {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Walks all `WASM_ENTRIES` under `sdk_root` and returns a flat list of
+/// Walks all `SDK_ENTRIES` under `sdk_root` and returns a flat list of
 /// `(absolute_source_path, archive_relative_path)` pairs.
 fn collect_files(sdk_root: &Path) -> Result<Vec<(PathBuf, String)>> {
     let mut out = Vec::new();
 
-    for (rel_src, rel_archive) in WASM_ENTRIES {
+    for (rel_src, rel_archive) in SDK_ENTRIES {
         let src = sdk_root.join(rel_src);
         if src.is_file() {
             out.push((src, rel_archive.to_string()));

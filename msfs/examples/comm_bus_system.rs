@@ -3,7 +3,6 @@ use infinity_rs::prelude::*;
 const EVT_CMD: &str = "infinity.demo/system_cmd";
 const EVT_STATE: &str = "infinity.demo/system_state";
 
-#[derive(Default)]
 pub struct CommbusStateSystem {
     l_enabled: LVar,
     _sub_cmd: Subscription,
@@ -18,8 +17,7 @@ impl CommbusStateSystem {
         // payload[0] = 0 -> disable
         // payload[0] = 1 -> enable
         // payload[0] = 2 -> toggle
-        let mut l_for_cb =
-            LVar::new("L:INFINITY_DEMO_ENABLED", "Bool").expect("LVar create failed");
+        let l_for_cb = LVar::new("L:INFINITY_DEMO_ENABLED", "Bool").expect("LVar create failed");
 
         let sub = Subscription::subscribe(EVT_CMD, move |bytes| {
             let cmd = bytes.get(0).copied().unwrap_or(0);
@@ -58,13 +56,13 @@ impl CommbusStateSystem {
 }
 
 impl System for CommbusStateSystem {
-    fn init(&mut self, ctx: &Context, install: &SystemInstall) -> bool {
+    fn init(&mut self, _ctx: &Context, _install: &SystemInstall) -> bool {
         let _ = self.l_enabled.set(0.0);
         self.broadcast_state();
         true
     }
 
-    fn update(&mut self, ctx: &Context, dt: f32) -> bool {
+    fn update(&mut self, _ctx: &Context, dt: f32) -> bool {
         self.accum += dt;
 
         if self.accum >= 0.5 {
@@ -74,7 +72,7 @@ impl System for CommbusStateSystem {
         true
     }
 
-    fn kill(&mut self, ctx: &Context) -> bool {
+    fn kill(&mut self, _ctx: &Context) -> bool {
         true
     }
 }

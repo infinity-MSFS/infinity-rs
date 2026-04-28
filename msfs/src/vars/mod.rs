@@ -95,11 +95,40 @@ impl VarParamArray1 {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
 pub struct Var<K: VarKind> {
     id: K::Id,
     unit: UnitId,
     _k: PhantomData<K>,
+}
+
+// Hand-rolled Copy/Clone/Debug so they don't demand `K: Copy/Clone/Debug`
+// just because `K` appears in `PhantomData`. `K::Id` already implements
+// these, which is the only field that actually carries data.
+impl<K: VarKind> Copy for Var<K> where K::Id: Copy {}
+
+impl<K: VarKind> Clone for Var<K>
+where
+    K::Id: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            id: self.id.clone(),
+            unit: self.unit,
+            _k: PhantomData,
+        }
+    }
+}
+
+impl<K: VarKind> std::fmt::Debug for Var<K>
+where
+    K::Id: std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Var")
+            .field("id", &self.id)
+            .field("unit", &self.unit)
+            .finish()
+    }
 }
 
 impl<K: VarKind> Var<K> {

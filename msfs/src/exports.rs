@@ -1,8 +1,5 @@
-use crate::types::*;
-use crate::{
-    context::Context,
-    modules::{Gauge, System},
-};
+// All paths inside the macro bodies below are written `$crate::…` so they
+// resolve at the call site; no top-level imports are needed here.
 
 #[macro_export]
 macro_rules! export_system {

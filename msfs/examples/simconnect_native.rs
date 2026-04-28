@@ -2,44 +2,16 @@
 //! the user aircraft's altitude / airspeed / heading every sim frame.
 //!
 //! Build & run with:
-//!     cargo run -p infinity-rs --features simconnect --example simconnect_native
+//!     cargo run -p infinity-rs --no-default-features --features simconnect \
+//!         --example simconnect_native
 //!
-//! MSFS must already be running with a flight loaded.
+//! `--no-default-features` disables the `wasm` feature, which gates the
+//! WASM-host-only modules (nvg, comm_bus, io, …) so this binary doesn't
+//! pull in unresolved gauge-runtime symbols. MSFS must already be running
+//! with a flight loaded.
 
 use std::ffi::CStr;
 use std::{thread, time::Duration};
-
-// `infinity-rs` is primarily compiled as a WASM gauge cdylib whose Drop impls
-// reference symbols provided by the MSFS WASM runtime (`fsCommBus*`, `fsIO*`,
-// `fsEvents*`, `nvg*`, …). These don't exist on a native host, so we stub them
-// as no-ops here just to satisfy the linker — they are never actually called by
-// the SimConnect path used in this example.
-#[allow(non_snake_case)]
-mod wasm_runtime_stubs {
-    macro_rules! stub {
-        ($($name:ident),* $(,)?) => {
-            $(
-                #[unsafe(no_mangle)]
-                pub extern "C" fn $name() {}
-            )*
-        };
-    }
-    stub!(
-        fsChartsFreeChartIndex, fsChartsFreeChartPages,
-        fsCommBusCall, fsCommBusUnregisterOneEvent,
-        fsEventsUnregisterKeyEventHandler,
-        fsFlowUnregister, fsFlowUnregisterAll,
-        fsIOClose, fsIOGetFileSize, fsIOGetLastError, fsIOHasError,
-        fsIOIsDone, fsIOIsOpened, fsIOOpen, fsIOWrite,
-        fsMapViewDelete,
-        fsNetworkHttpRequestGetData, fsNetworkHttpRequestGetDataSize,
-        fsPlannedRouteGetEfbRoute, fsPlannedRouteRespondToRequest,
-        fsPlannedRouteUnregisterForBroadcast, fsPlannedRouteUnregisterForRequest,
-        fsVarsGetUnitId,
-        fsVfxDestroyInstance,
-        nvgDeleteInternal,
-    );
-}
 
 use infinity_rs::simconnect::{
     DataDefinitionId, DataRequestFlag, DataRequestId, DataType, ObjectId, Period, Recv, SimConnect,
@@ -101,7 +73,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     loop {
         sc.dispatch(|msg| match msg {
-            Recv::SimObjectData(data) if SimObjectDataView(data).dwRequestID() == REQ_AIRCRAFT.raw() => {
+            Recv::SimObjectData(data)
+                if SimObjectDataView(data).dwRequestID() == REQ_AIRCRAFT.raw() =>
+            {
                 let v = SimObjectDataView(data);
                 let payload: AircraftData = unsafe { v.data_as() };
                 let alt = payload.altitude_ft;

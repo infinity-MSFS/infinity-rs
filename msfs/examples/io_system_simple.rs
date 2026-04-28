@@ -103,7 +103,7 @@ impl System for FsDemoSystem {
         true
     }
 
-    fn kill(&mut self, ctx: &Context) -> bool {
+    fn kill(&mut self, _ctx: &Context) -> bool {
         self.read_req = None;
         self.write_req = None;
         true

@@ -2,10 +2,12 @@ mod build;
 mod cargo_meta;
 mod cli;
 mod config;
+mod doctor;
 mod pack_sdk;
 mod process;
 mod scripts;
 mod setup;
+mod stats;
 mod ui;
 mod util;
 
@@ -28,6 +30,7 @@ fn real_main() -> Result<()> {
         Commands::Projects(args) => build::run_projects(args)?,
         Commands::Setup(args) => setup::run_setup(args)?,
         Commands::PackSdk(args) => pack_sdk::run_pack_sdk(args)?,
+        Commands::Doctor => doctor::run_doctor()?,
     }
 
     Ok(())

@@ -237,11 +237,15 @@ fn derive_var_struct_impl(input: DeriveInput) -> syn::Result<TokenStream> {
 
         match (index_expr, target_expr) {
             (Some(index), Some(target)) => {
-                quote!(#field_ident: #helper_fn_ident()?.get_indexed_target(#index, #target)?)
+                quote!(#field_ident: Self::#helper_fn_ident()?.get_indexed_target(#index, #target)?)
             }
-            (Some(index), None) => quote!(#field_ident: #helper_fn_ident()?.get_indexed(#index)?),
-            (None, Some(target)) => quote!(#field_ident: #helper_fn_ident()?.get_target(#target)?),
-            (None, None) => quote!(#field_ident: #helper_fn_ident()?.get()?),
+            (Some(index), None) => {
+                quote!(#field_ident: Self::#helper_fn_ident()?.get_indexed(#index)?)
+            }
+            (None, Some(target)) => {
+                quote!(#field_ident: Self::#helper_fn_ident()?.get_target(#target)?)
+            }
+            (None, None) => quote!(#field_ident: Self::#helper_fn_ident()?.get()?),
         }
     });
 
@@ -255,19 +259,24 @@ fn derive_var_struct_impl(input: DeriveInput) -> syn::Result<TokenStream> {
 
         match (index_expr, target_expr) {
             (Some(index), Some(target)) => {
-                quote!(#helper_fn_ident()?.set_indexed_target(#index, #target, self.#field_ident)?;)
+                quote!(Self::#helper_fn_ident()?.set_indexed_target(#index, #target, self.#field_ident)?;)
             }
             (Some(index), None) => {
-                quote!(#helper_fn_ident()?.set_indexed(#index, self.#field_ident)?;)
+                quote!(Self::#helper_fn_ident()?.set_indexed(#index, self.#field_ident)?;)
             }
             (None, Some(target)) => {
-                quote!(#helper_fn_ident()?.set_target(#target, self.#field_ident)?;)
+                quote!(Self::#helper_fn_ident()?.set_target(#target, self.#field_ident)?;)
             }
-            (None, None) => quote!(#helper_fn_ident()?.set(self.#field_ident)?;),
+            (None, None) => quote!(Self::#helper_fn_ident()?.set(self.#field_ident)?;),
         }
     });
 
     let expanded = quote! {
+        // Helpers are name-mangled with the struct + field ident to keep
+        // them collision-free across multiple `#[derive(VarStruct)]`s; the
+        // resulting names don't satisfy the snake_case lint, so silence it
+        // for the whole impl block.
+        #[allow(non_snake_case, non_upper_case_globals)]
         impl #struct_ident {
             #(#helpers)*
 

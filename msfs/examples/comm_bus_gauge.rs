@@ -29,12 +29,12 @@ impl ToggleGauge {
 }
 
 impl Gauge for ToggleGauge {
-    fn init(&mut self, ctx: &Context, install: &mut GaugeInstall) -> bool {
+    fn init(&mut self, _ctx: &Context, _install: &mut GaugeInstall) -> bool {
         let _ = self.l_toggle.set(0.0);
         true
     }
 
-    fn update(&mut self, ctx: &Context, dt: f32) -> bool {
+    fn update(&mut self, _ctx: &Context, _dt: f32) -> bool {
         let v = self.l_toggle.get().unwrap_or(0.0) as i32;
         if v != self.last_sent {
             self.send(v);
@@ -43,17 +43,17 @@ impl Gauge for ToggleGauge {
         true
     }
 
-    fn draw(&mut self, ctx: &Context, draw: &mut GaugeDraw) -> bool {
+    fn draw(&mut self, _ctx: &Context, _draw: &mut GaugeDraw) -> bool {
         // Actual gauge rendering happens here, This example doesn't cover rendering so we just draw a blank gauge.
         true
     }
 
-    fn kill(&mut self, ctx: &Context) -> bool {
+    fn kill(&mut self, _ctx: &Context) -> bool {
         true
     }
 
     fn mouse(&mut self, _ctx: &Context, _x: f32, _y: f32, _flags: i32) {
-        if (_flags == 0) {
+        if _flags == 0 {
             return;
         }
 

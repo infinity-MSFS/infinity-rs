@@ -36,6 +36,12 @@ pub struct BuildConfig {
     pub out_name: Option<String>,
 
     #[serde(default)]
+    pub kind: PackageKind,
+
+    #[serde(default)]
+    pub features: Vec<String>,
+
+    #[serde(default)]
     pub copy: Vec<CopyRule>,
 }
 
@@ -47,6 +53,8 @@ impl Default for BuildConfig {
             bin: None,
             out_dir: default_out_dir(),
             out_name: None,
+            kind: PackageKind::default(),
+            features: Vec::new(),
             copy: Vec::new(),
         }
     }
@@ -62,9 +70,27 @@ pub struct PackageBuild {
     pub target: Option<String>,
     pub out_dir: Option<String>,
     pub out_name: Option<String>,
+    pub kind: Option<PackageKind>,
+
+    #[serde(default)]
+    pub features: Vec<String>,
 
     #[serde(default)]
     pub copy: Vec<CopyRule>,
+}
+
+/// What kind of artefact a package produces.
+///
+/// `wasm` packages are built for `wasm32-wasip1` (or whatever `target` is
+/// configured) and post-processed with `wasm-opt`. `native` packages are
+/// built for the host triple, are gated to Windows (since SimConnect's
+/// import library is Windows-only), and skip the wasm-opt step.
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum PackageKind {
+    #[default]
+    Wasm,
+    Native,
 }
 
 #[derive(Debug, Deserialize, Clone)]

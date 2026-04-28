@@ -172,9 +172,10 @@ impl<R: Read> Read for ProgressReader<R> {
 
 /// Extracts a `.tar.gz` byte slice under `dest`.
 ///
-/// Archive entries are extracted at their stored paths (e.g. `WASM/include/…`)
-/// relative to `dest`.  No leading component is stripped — the `pack-sdk`
-/// command always writes paths in their canonical `WASM/…` form.
+/// Archive entries are extracted at their stored paths (e.g. `WASM/include/…`
+/// or `SimConnect SDK/include/…`) relative to `dest`.  No leading component
+/// is stripped — the `pack-sdk` command always writes canonical SDK-relative
+/// paths.
 fn extract_tar_gz(data: &[u8], dest: &Path) -> Result<()> {
     let gz = GzDecoder::new(data);
     let mut archive = Archive::new(gz);

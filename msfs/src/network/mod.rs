@@ -83,7 +83,7 @@ impl OwnedFfiParams {
             None => None,
         };
 
-        let mut headers_cs: Vec<CString> = p
+        let headers_cs: Vec<CString> = p
             .headers
             .into_iter()
             .map(CString::new)

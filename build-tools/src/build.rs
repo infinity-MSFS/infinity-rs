@@ -1,27 +1,36 @@
 use crate::{
     cargo_meta,
     cli::{BuildArgs, ProjectsArgs},
-    config::{BuildConfig, CopyRule, InfinityMsfsToml, PackageBuild},
-    process, scripts, setup,
-    ui::{self, BuildOutcome, BuildUi},
+    config::{BuildConfig, CopyRule, InfinityMsfsToml, PackageBuild, PackageKind},
+    process, scripts, setup, stats,
+    ui::{self, BuildOutcome, BuildPhase, BuildUi},
     util,
 };
 use anyhow::{Context, Result, bail};
 use cargo_metadata::Metadata;
+use console::style;
 use std::{
     fs,
     path::{Path, PathBuf},
     process::Command,
 };
 
-/// Resolved, ready-to-execute build description for a single wasm artefact.
+/// Resolved, ready-to-execute build description for a single artefact.
 struct BuildPlan {
     package: String,
     bin: String,
-    target: String,
+    target: Option<String>,
     out_dir: PathBuf,
     out_name: String,
+    kind: PackageKind,
+    features: Vec<String>,
     copy: Vec<CopyRule>,
+}
+
+impl BuildPlan {
+    fn target_label(&self) -> String {
+        self.target.clone().unwrap_or_else(|| "<host>".to_string())
+    }
 }
 
 pub fn run_build(args: BuildArgs) -> Result<()> {
@@ -38,7 +47,25 @@ pub fn run_build(args: BuildArgs) -> Result<()> {
 
     let metadata = cargo_meta::load_metadata(&root)?;
 
-    let plans = resolve_plans(&root, &cfg, &metadata, args.package.as_deref(), &args.only)?;
+    let mut plans = resolve_plans(&root, &cfg, &metadata, args.package.as_deref(), &args.only)?;
+
+    // Drop native plans on non-Windows hosts with a visible warning rather
+    // than failing the whole build. SimConnect's import library is only
+    // shipped for Windows, so trying to link there is doomed.
+    if !cfg!(target_os = "windows") {
+        plans.retain(|plan| {
+            if plan.kind == PackageKind::Native {
+                eprintln!(
+                    "{} skipping native package {} (only built on Windows)",
+                    style("!").yellow().bold(),
+                    style(&plan.package).bold(),
+                );
+                false
+            } else {
+                true
+            }
+        });
+    }
 
     if plans.is_empty() {
         bail!("no packages selected to build");
@@ -50,6 +77,8 @@ pub fn run_build(args: BuildArgs) -> Result<()> {
     ui.announce_phase("Running pre-build scripts", cfg.scripts.pre_build.len());
     scripts::run_script_list(&root, "pre_build", &cfg.scripts.pre_build, args.verbose)?;
 
+    let mut stats_db = stats::Stats::load(&root);
+
     for plan in &plans {
         ui.start_package(&plan.package);
         let outcome = build_one(
@@ -59,8 +88,17 @@ pub fn run_build(args: BuildArgs) -> Result<()> {
             use_wasm_opt,
             args.release,
             args.verbose,
+            &mut ui,
+            &mut stats_db,
         )?;
         ui.finish_package(&plan.package, &plan.out_dir.join(&plan.out_name), outcome);
+    }
+
+    if let Err(err) = stats_db.save(&root) {
+        eprintln!(
+            "{} failed to persist build stats: {err:#}",
+            console::style("warning:").yellow().bold()
+        );
     }
 
     ui.announce_phase("Running post-build scripts", cfg.scripts.post_build.len());
@@ -90,10 +128,11 @@ pub fn run_projects(args: ProjectsArgs) -> Result<()> {
     ui::print_projects(
         root.as_path(),
         plans.into_iter().map(|plan| {
+            let target = plan.target_label();
             (
                 plan.package,
                 plan.bin,
-                plan.target,
+                target,
                 plan.out_dir.join(plan.out_name),
             )
         }),
@@ -109,16 +148,19 @@ fn build_one(
     use_wasm_opt: bool,
     release: bool,
     verbose: bool,
+    ui: &mut BuildUi,
+    stats_db: &mut stats::Stats,
 ) -> Result<BuildOutcome> {
-    let built_wasm = built_wasm_path(root, &plan.target, release, &plan.bin);
-    let final_wasm = plan.out_dir.join(&plan.out_name);
+    let built = built_artifact_path(root, plan, release);
+    let final_path = plan.out_dir.join(&plan.out_name);
 
-    run_cargo_build(root, &plan.target, &plan.package, release, verbose)?;
+    ui.set_phase(&plan.package, BuildPhase::Compiling);
+    run_cargo_build(root, plan, release, verbose)?;
 
-    if !built_wasm.exists() {
+    if !built.exists() {
         bail!(
-            "cargo build completed, but built wasm was not found at {}",
-            built_wasm.display()
+            "cargo build completed, but built artifact was not found at {}",
+            built.display()
         );
     }
 
@@ -129,15 +171,59 @@ fn build_one(
         )
     })?;
 
-    if use_wasm_opt {
-        run_wasm_opt(root, wasm_opt_args, &built_wasm, &final_wasm, verbose)?;
+    let run_opt = use_wasm_opt && plan.kind == PackageKind::Wasm;
+    if run_opt {
+        ui.set_phase(&plan.package, BuildPhase::Optimizing);
+        run_wasm_opt(root, wasm_opt_args, &built, &final_path, verbose)?;
     } else {
-        util::copy_file(&built_wasm, &final_wasm)?;
+        ui.set_phase(&plan.package, BuildPhase::Copying);
+        util::copy_file(&built, &final_path)?;
     }
 
-    let copied_files = run_copy_rules(root, &plan.copy)?;
+    ui.set_phase(&plan.package, BuildPhase::Copying);
+    let mut copied_files = run_copy_rules(root, &plan.copy)?;
+    copied_files += copy_simconnect_runtime(plan)?;
 
-    Ok(BuildOutcome { copied_files })
+    let size_bytes = fs::metadata(&final_path).ok().map(|m| m.len());
+    let previous_size_bytes = stats_db.previous_size(&plan.package);
+    if let Some(size) = size_bytes {
+        stats_db.record(&plan.package, size);
+    }
+
+    Ok(BuildOutcome {
+        copied_files,
+        size_bytes,
+        previous_size_bytes,
+    })
+}
+
+/// For Windows native packages that opt into the `simconnect` feature,
+/// copy `SimConnect.dll` from the resolved SDK location next to the built
+/// executable so the result is runnable without manual setup.
+fn copy_simconnect_runtime(plan: &BuildPlan) -> Result<usize> {
+    if plan.kind != PackageKind::Native
+        || !cfg!(target_os = "windows")
+        || !plan.features.iter().any(|f| f == "simconnect")
+    {
+        return Ok(0);
+    }
+
+    let sdk = match msfs_sdk::msfs_sdk_path() {
+        Ok(p) => PathBuf::from(p),
+        Err(_) => return Ok(0),
+    };
+
+    let dll = sdk
+        .join("SimConnect SDK")
+        .join("lib")
+        .join("SimConnect.dll");
+    if !dll.exists() {
+        return Ok(0);
+    }
+
+    let dest = plan.out_dir.join("SimConnect.dll");
+    util::copy_file(&dll, &dest)?;
+    Ok(1)
 }
 
 /// Build a list of `BuildPlan`s honouring `[[packages]]` when present and
@@ -195,7 +281,17 @@ fn plan_from_package_entry(
     let pkg = cargo_meta::resolve_package(metadata, Some(&entry.package))?;
     let bin = cargo_meta::resolve_bin_name(pkg, entry.bin.as_deref().or(base.bin.as_deref()));
 
-    let target = entry.target.clone().unwrap_or_else(|| base.target.clone());
+    let kind = entry.kind.unwrap_or(base.kind);
+
+    // For native packages we default the cargo target to the host triple
+    // (i.e. don't pass --target at all). For wasm packages we keep the
+    // configured target string.
+    let target = match (entry.target.as_deref(), kind) {
+        (Some(t), _) => Some(t.to_string()),
+        (None, PackageKind::Wasm) => Some(base.target.clone()),
+        (None, PackageKind::Native) => None,
+    };
+
     let out_dir_rel = entry
         .out_dir
         .clone()
@@ -214,10 +310,17 @@ fn plan_from_package_entry(
                 _ => None,
             }
         })
-        .unwrap_or_else(|| format!("{bin}.wasm"));
+        .unwrap_or_else(|| default_out_name(&bin, kind));
 
     let mut copy = base.copy.clone();
     copy.extend(entry.copy.iter().cloned());
+
+    let mut features = base.features.clone();
+    for feat in &entry.features {
+        if !features.contains(feat) {
+            features.push(feat.clone());
+        }
+    }
 
     Ok(BuildPlan {
         package: pkg.name.clone(),
@@ -225,6 +328,8 @@ fn plan_from_package_entry(
         target,
         out_dir,
         out_name,
+        kind,
+        features,
         copy,
     })
 }
@@ -242,12 +347,16 @@ fn plan_from_legacy(
     let pkg = cargo_meta::resolve_package(metadata, package_name.as_deref())?;
     let bin = cargo_meta::resolve_bin_name(pkg, base.bin.as_deref());
 
-    let target = base.target.clone();
+    let kind = base.kind;
+    let target = match kind {
+        PackageKind::Wasm => Some(base.target.clone()),
+        PackageKind::Native => None,
+    };
     let out_dir = root.join(&base.out_dir);
     let out_name = base
         .out_name
         .clone()
-        .unwrap_or_else(|| format!("{bin}.wasm"));
+        .unwrap_or_else(|| default_out_name(&bin, kind));
 
     Ok(BuildPlan {
         package: pkg.name.clone(),
@@ -255,35 +364,64 @@ fn plan_from_legacy(
         target,
         out_dir,
         out_name,
+        kind,
+        features: base.features.clone(),
         copy: base.copy.clone(),
     })
 }
 
-fn built_wasm_path(root: &Path, target: &str, release: bool, bin_name: &str) -> PathBuf {
-    let profile = if release { "release" } else { "debug" };
-
-    let bin_name = bin_name.replace('-', "_");
-
-    root.join("target")
-        .join(target)
-        .join(profile)
-        .join(format!("{bin_name}.wasm"))
+fn default_out_name(bin: &str, kind: PackageKind) -> String {
+    match kind {
+        PackageKind::Wasm => format!("{bin}.wasm"),
+        PackageKind::Native => {
+            if cfg!(target_os = "windows") {
+                format!("{bin}.exe")
+            } else {
+                bin.to_string()
+            }
+        }
+    }
 }
 
-fn run_cargo_build(
-    root: &Path,
-    target: &str,
-    package: &str,
-    release: bool,
-    verbose: bool,
-) -> Result<()> {
+fn built_artifact_path(root: &Path, plan: &BuildPlan, release: bool) -> PathBuf {
+    let profile = if release { "release" } else { "debug" };
+
+    let mut path = root.join("target");
+    if let Some(target) = &plan.target {
+        path.push(target);
+    }
+    path.push(profile);
+
+    let file = match plan.kind {
+        // For wasm bin targets cargo normalizes the file stem to use
+        // underscores; for native exes it keeps hyphens.
+        PackageKind::Wasm => format!("{}.wasm", plan.bin.replace('-', "_")),
+        PackageKind::Native => {
+            if cfg!(target_os = "windows") {
+                format!("{}.exe", plan.bin)
+            } else {
+                plan.bin.clone()
+            }
+        }
+    };
+    path.push(file);
+    path
+}
+
+fn run_cargo_build(root: &Path, plan: &BuildPlan, release: bool, verbose: bool) -> Result<()> {
     let mut cmd = Command::new("cargo");
     cmd.current_dir(root)
         .arg("build")
-        .arg("--target")
-        .arg(target)
         .arg("-p")
-        .arg(package);
+        .arg(&plan.package);
+
+    if let Some(target) = &plan.target {
+        cmd.arg("--target").arg(target);
+    }
+
+    if !plan.features.is_empty() {
+        cmd.arg("--features").arg(plan.features.join(","));
+    }
 
     if release {
         cmd.arg("--release");

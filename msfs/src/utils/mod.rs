@@ -1,5 +1,5 @@
 ﻿use crate::sys::{
-    FsCRC, FsVarParamArray, FsVarParamVariant, FsVarParamVariant__bindgen_ty_1, eFsVarParamType,
+    FsCRC, FsVarParamArray, FsVarParamVariant, FsVarParamVariant__bindgen_ty_1,
     eFsVarParamType_FsVarParamTypeCRC, eFsVarParamType_FsVarParamTypeDouble,
     eFsVarParamType_FsVarParamTypeInteger, eFsVarParamType_FsVarParamTypeString,
 };
@@ -17,8 +17,8 @@ pub enum FsParamArg {
 #[derive(Debug)]
 pub enum FsParamError {
     ArgCountMismatch { fmt_len: usize, args_len: usize },
-    UnknonwnFormatChar { ch: char, index: usize },
-    UnknonwnError { msg: String },
+    UnknownFormatChar { ch: char, index: usize },
+    UnknownError { msg: String },
 }
 
 pub struct FsVarParamArrayOwned {
@@ -60,8 +60,10 @@ impl Drop for FsVarParamArrayOwned {
 pub unsafe fn fs_destroy_param_array(p: &mut FsVarParamArray) {
     let len = p.size as usize;
     if len != 0 && !p.array.is_null() {
-        let slice = slice::from_raw_parts_mut(p.array, len);
-        drop(Box::from_raw(slice));
+        unsafe {
+            let slice = slice::from_raw_parts_mut(p.array, len);
+            drop(Box::from_raw(slice));
+        }
     }
     p.size = 0;
     p.array = ptr::null_mut();
@@ -110,7 +112,7 @@ pub fn fs_create_param_array(
     for (ch, arg) in fmt.chars().zip(args.iter().copied()) {
         let var = make_variant(ch, arg)
             .map_err(|bad| bad)
-            .map_err(|e| FsParamError::UnknonwnError { msg: e.to_string() })?;
+            .map_err(|e| FsParamError::UnknownError { msg: e.to_string() })?;
         v.push(var);
     }
 
