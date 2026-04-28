@@ -14,6 +14,8 @@ pub mod modules;
 pub mod network;
 pub mod planned_route;
 pub mod prelude;
+#[cfg(feature = "simconnect")]
+pub mod simconnect;
 pub mod sys;
 pub mod types;
 pub mod utils;

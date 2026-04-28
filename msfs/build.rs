@@ -53,7 +53,20 @@
             bindings = bindings
                 .clang_arg(format!("-I{msfs_sdk}/SimConnect SDK/include"))
                 .clang_arg("-DUSE_SIMCONNECT=1")
-                .rustified_enum("SIMCONNECT_EXCEPTION");
+                .rustified_enum("SIMCONNECT_EXCEPTION")
+                .rustified_enum("SIMCONNECT_DATATYPE")
+                .rustified_enum("SIMCONNECT_PERIOD")
+                .rustified_enum("SIMCONNECT_CLIENT_DATA_PERIOD")
+                .rustified_enum("SIMCONNECT_SIMOBJECT_TYPE")
+                .rustified_enum("SIMCONNECT_STATE")
+                .rustified_enum("SIMCONNECT_TEXT_TYPE")
+                .rustified_enum("SIMCONNECT_TEXT_RESULT")
+                .rustified_enum("SIMCONNECT_WEATHER_MODE")
+                .rustified_enum("SIMCONNECT_FACILITY_LIST_TYPE")
+                .rustified_enum("SIMCONNECT_FACILITY_DATA_TYPE")
+                .rustified_enum("SIMCONNECT_INPUT_EVENT_TYPE")
+                .rustified_enum("SIMCONNECT_FLOW_EVENT")
+                .rustified_enum("SIMCONNECT_MISSION_END");
         }
 
         if wasm {
@@ -76,5 +89,6 @@
         println!("cargo:rustc-link-lib=user32");
         println!("cargo:rustc-link-lib=ws2_32");
         println!("cargo:rustc-link-lib=shell32");
+        println!("cargo:rustc-link-lib=advapi32");
     }
 }

@@ -20,3 +20,68 @@ serde_json = "1.0"
 bindgen = "0.72"
 msfs_sdk = { path = "../msfs_sdk" }
 cc = "1.0"
+
+[[example]]
+name = "simconnect_native"
+required-features = ["simconnect"]
+
+[[example]]
+name = "simconnect_gauge"
+required-features = ["simconnect"]
+crate-type = ["cdylib"]
+
+[[example]]
+name = "charts_gauge"
+crate-type = ["cdylib"]
+
+[[example]]
+name = "comm_bus_gauge"
+crate-type = ["cdylib"]
+
+[[example]]
+name = "comm_bus_system"
+crate-type = ["cdylib"]
+
+[[example]]
+name = "event_api"
+crate-type = ["cdylib"]
+
+[[example]]
+name = "flow_system"
+crate-type = ["cdylib"]
+
+[[example]]
+name = "io_system_simple"
+crate-type = ["cdylib"]
+
+[[example]]
+name = "io_system"
+crate-type = ["cdylib"]
+
+[[example]]
+name = "map_view_weather_radar"
+crate-type = ["cdylib"]
+
+[[example]]
+name = "network_fetch_system"
+crate-type = ["cdylib"]
+
+[[example]]
+name = "network_post_system"
+crate-type = ["cdylib"]
+
+[[example]]
+name = "nvg_render"
+crate-type = ["cdylib"]
+
+[[example]]
+name = "planned_route_system"
+crate-type = ["cdylib"]
+
+[[example]]
+name = "vars_full_api"
+crate-type = ["cdylib"]
+
+[[example]]
+name = "vfx_system"
+crate-type = ["cdylib"]
