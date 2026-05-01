@@ -2,18 +2,22 @@
 
 Safe, idiomatic Rust bindings for the **Microsoft Flight Simulator 2024 (MSFS 2024) WASM SDK**.
 
-Write MSFS gauges and systems in Rust with safe, idiomatic wrappers over the entire WASM SDK surface — SimVars, Comm Bus, async HTTP, file I/O, NanoVG rendering, simulation events, the flow lifecycle, map views (with weather radar / terrain), airport charts, VFX, and the EFB planned route channel.
+Write MSFS gauges and systems in Rust with safe, idiomatic wrappers over the entire WASM SDK surface — SimVars, Comm Bus, async HTTP, file I/O, NanoVG rendering, simulation events, the flow lifecycle, map view, airport charts, VFX, and the planned route.
+
+📖 **Full docs:** <https://infinity-simulations.com/docs/developer/getting-started>
 
 ---
 
 ## Workspace Layout
 
-| Crate | Package name | Description |
+This repo publishes four crates to crates.io. As a user you only ever depend on the first one and install the last one — the other two are pulled in automatically.
+
+| Crate | crates.io | Role |
 |---|---|---|
-| `msfs/` | `infinity-rs` | Main bindings crate — re-exports everything you need |
-| `infinity_rs_derive/` | `infinity_rs_derive` | Proc-macro helpers (`#[derive(VarStruct)]`) — re-exported from `infinity_rs` under the `derive` feature |
-| `infinity_rs_sdk/` | `infinity_rs_sdk` | Build helper that locates the installed MSFS 2024 SDK |
-| `build-tools/` | `infinity-msfs` | CLI for building / packaging WASM modules |
+| `infinity-rs` | [`infinity-rs`](https://crates.io/crates/infinity-rs) | Main bindings crate — what you put in your `Cargo.toml` |
+| `infinity_rs_derive` | [`infinity_rs_derive`](https://crates.io/crates/infinity_rs_derive) | Proc-macros (`VarStruct`, …) — re-exported from `infinity_rs` under the `derive` feature |
+| `infinity_rs_sdk` | [`infinity_rs_sdk`](https://crates.io/crates/infinity_rs_sdk) | Build-script helper that locates the MSFS 2024 SDK on disk |
+| `infinity-msfs` | [`infinity-msfs`](https://crates.io/crates/infinity-msfs) | CLI: SDK installer + WASM build/packaging — `cargo install infinity-msfs` |
 
 > The lib crate is named **`infinity-rs`** (Rust path: `infinity_rs`). It used to be `msfs`, which collided with the FlyByWire crate of the same name; the rename in `0.2.0` is intentionally breaking. Update imports from `use msfs::...` to `use infinity_rs::...`, and `msfs::export_gauge!` / `msfs::export_system!` to `infinity_rs::export_gauge!` / `infinity_rs::export_system!`.
 
@@ -21,49 +25,70 @@ Write MSFS gauges and systems in Rust with safe, idiomatic wrappers over the ent
 
 ## Prerequisites
 
-### WASM Builds (normal usage)
-
-The `infinity-msfs` build tools work on **any platform** (Windows, macOS, Linux) and do **not** require the MSFS 2024 SDK. The necessary MSFS headers and WASI sysroot are bundled and installed automatically.
-
 | Requirement | Notes |
 |---|---|
-| Rust nightly / `wasm32-wasip1` target | `rustup target add wasm32-wasip1` |
+| Rust 1.85+ with `wasm32-wasip1` target | `rustup target add wasm32-wasip1` |
 | `clang` + `llvm-ar` | Required for WASM compilation; install via [LLVM](https://releases.llvm.org/) or your system package manager |
 | `wasm-opt` | Part of [Binaryen](https://github.com/WebAssembly/binaryen); only required when `wasm_opt.enabled = true` in your config |
 
-### SimConnect / Native Builds
-
-The MSFS 2024 SDK is **only** required when building for a native target with SimConnect support (e.g. external tooling that talks to a running sim instance):
-
-| Requirement | Notes |
-|---|---|
-| **MSFS 2024 SDK** | Install via the MSFS Dev Mode or the standalone SDK installer |
-| `MSFS2024_SDK` env var | Must point to your SDK root (e.g. `C:\MSFS 2024 SDK`) |
-
-The build script automatically detects whether you are targeting `wasm32` and adjusts compiler flags, NanoVG compilation, and linking accordingly.
+The MSFS 2024 SDK itself is fetched on demand by the `infinity-msfs` CLI (see below) — works on Windows, macOS, and Linux. You don't need to install the SDK manually unless you want to point at an existing install via `MSFS2024_SDK`.
 
 ---
 
 ## Getting Started
 
-Add the crate to your `Cargo.toml`:
+> The walkthrough below is the short version. For tutorials, configuration reference, and end-to-end project setup, see the full developer docs at **<https://infinity-simulations.com/docs/developer/getting-started>**.
+
+### 1. Install the build CLI
+
+```bash
+cargo install infinity-msfs
+```
+
+This gives you `infinity-msfs build`, `infinity-msfs sdk install`, `infinity-msfs doctor`, and the project commands.
+
+### 2. Add the bindings crate
 
 ```toml
 [dependencies]
-infinity-rs = { path = "path/to/infinity-rs/msfs" }  # `derive` feature is on by default and re-exports VarStruct etc.
+infinity-rs = "0.2"
+```
+
+That pulls everything you need by default — the WASM-runtime APIs and the `#[derive(VarStruct)]` macro are re-exported under `infinity_rs::*`.
+
+### 3. Build
+
+```bash
+infinity-msfs build
+```
+
+On the first build, if no SDK is installed, the CLI prompts to download it from `sdk.flightsimulator.com`. Re-run `infinity-msfs sdk install --force` later to upgrade. To use an existing SDK install instead, set `MSFS2024_SDK` to its root path.
+
+### Feature flags
+
+| Feature | Default | What it enables |
+|---|---|---|
+| `wasm` | yes | WASM-host runtime APIs (NVG, comm bus, IO, network, vars, gauge/system entry points). Disable for native-only builds. |
+| `derive` | yes | Re-exports the `infinity_rs_derive` proc-macros (`VarStruct`, etc.). |
+| `simconnect` | no | SimConnect bindings. Works on both WASM and native Windows. |
+
+Common combinations:
+
+```toml
+# WASM gauge or system (the default)
+infinity-rs = "0.2"
+
+# Native SimConnect tool, no WASM target
+infinity-rs = { version = "0.2", default-features = false, features = ["simconnect"] }
+
+# WASM module that also uses SimConnect
+infinity-rs = { version = "0.2", features = ["simconnect"] }
 ```
 
 In code:
 
 ```rust
 use infinity_rs::prelude::*;
-```
-
-Set the SDK environment variable before building:
-
-```powershell
-$env:MSFS2024_SDK = "C:\MSFS 2024 SDK"
-cargo build --target wasm32-wasip1
 ```
 
 ---
