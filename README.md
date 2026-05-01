@@ -11,8 +11,8 @@ Write MSFS gauges and systems in Rust with safe, idiomatic wrappers over the ent
 | Crate | Package name | Description |
 |---|---|---|
 | `msfs/` | `infinity-rs` | Main bindings crate — re-exports everything you need |
-| `msfs_derive/` | `msfs_derive` | Proc-macro helpers (`#[derive(VarStruct)]`) |
-| `msfs_sdk/` | `msfs_sdk` | Build helper that locates the installed MSFS 2024 SDK |
+| `infinity_rs_derive/` | `infinity_rs_derive` | Proc-macro helpers (`#[derive(VarStruct)]`) — re-exported from `infinity_rs` under the `derive` feature |
+| `infinity_rs_sdk/` | `infinity_rs_sdk` | Build helper that locates the installed MSFS 2024 SDK |
 | `build-tools/` | `infinity-msfs` | CLI for building / packaging WASM modules |
 
 > The lib crate is named **`infinity-rs`** (Rust path: `infinity_rs`). It used to be `msfs`, which collided with the FlyByWire crate of the same name; the rename in `0.2.0` is intentionally breaking. Update imports from `use msfs::...` to `use infinity_rs::...`, and `msfs::export_gauge!` / `msfs::export_system!` to `infinity_rs::export_gauge!` / `infinity_rs::export_system!`.
@@ -50,8 +50,7 @@ Add the crate to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-infinity-rs = { path = "path/to/infinity-rs/msfs" }
-msfs_derive = { path = "path/to/infinity-rs/msfs_derive" }  # only needed for VarStruct
+infinity-rs = { path = "path/to/infinity-rs/msfs" }  # `derive` feature is on by default and re-exports VarStruct etc.
 ```
 
 In code:
@@ -210,7 +209,7 @@ let rpm = eng_rpm.get_with(VarParamArray1::new(1), Default::default())?; // engi
 Bundle multiple vars into a single struct and snapshot them all at once:
 
 ```rust
-use msfs_derive::VarStruct;
+use infinity_rs::VarStruct;
 
 #[derive(Debug, Clone, Copy, VarStruct)]
 struct FlightData {

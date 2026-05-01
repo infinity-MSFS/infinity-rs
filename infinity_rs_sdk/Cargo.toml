@@ -1,0 +1,15 @@
+[package]
+name = "infinity_rs_sdk"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "MSFS SDK locator for building infinity-rs bindings."
+license = "MIT"
+repository = "https://github.com/infinity-MSFS/infinity-rs"
+homepage = "https://infinity-simulations.com/docs/developer/getting-started"
+documentation = "https://infinity-simulations.com/docs/developer/getting-started"
+authors = ["cameron_griego@protonmail.com"]
+keywords = ["msfs", "sdk", "flight-simulator"]
+categories = ["external-ffi-bindings"]
+
+[dependencies]

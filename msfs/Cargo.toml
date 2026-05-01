@@ -2,21 +2,25 @@
 name = "infinity-rs"
 version = "0.2.0"
 edition = "2024"
+rust-version = "1.85"
 description = "Safe, idiomatic Rust bindings for the MSFS 2024 WASM SDK."
+license = "MIT"
+repository = "https://github.com/infinity-MSFS/infinity-rs"
+homepage = "https://infinity-simulations.com/docs/developer/getting-started"
+documentation = "https://infinity-simulations.com/docs/developer/getting-started"
+readme = "../README.md"
+authors = ["cameron_griego@protonmail.com"]
+keywords = ["msfs", "flight-simulator", "wasm", "simconnect", "bindings"]
+categories = ["api-bindings", "external-ffi-bindings", "simulation"]
 
 [features]
-default = ["wasm"]
-# Compile the MSFS WASM-runtime APIs (nvg, vfx, map view, comm bus, flow, io,
-# network, charts, planned route, events, vars, gauge/system entry points,
-# prelude). These call into symbols only provided by the MSFS WASM host, so
-# disable this feature for native builds.
+default = ["wasm", "derive"]
 wasm = []
-# Enable SimConnect bindings. Works on both WASM (resolved by the host
-# runtime) and native Windows (linked against the SimConnect import lib).
 simconnect = []
+derive = ["dep:infinity_rs_derive"]
 
 [dependencies]
-msfs_derive = { path = "../msfs_derive" }
+infinity_rs_derive = { path = "../infinity_rs_derive", version = "0.1.0", optional = true }
 bitflags = "1.3"
 paste = "1.0"
 serde = { version = "1.0", features = ["derive"] }
@@ -24,7 +28,7 @@ serde_json = "1.0"
 
 [build-dependencies]
 bindgen = "0.72"
-msfs_sdk = { path = "../msfs_sdk" }
+infinity_rs_sdk = { path = "../infinity_rs_sdk", version = "0.1.0" }
 cc = "1.0"
 
 [[example]]

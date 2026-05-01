@@ -3,17 +3,17 @@ mod cargo_meta;
 mod cli;
 mod config;
 mod doctor;
-mod pack_sdk;
 mod process;
 mod scripts;
-mod setup;
+mod sdk;
+mod sdk_install;
 mod stats;
 mod ui;
 mod util;
 
 use anyhow::Result;
 use clap::Parser;
-use cli::{Cli, Commands};
+use cli::{Cli, Commands, SdkCommand};
 
 fn main() {
     if let Err(err) = real_main() {
@@ -28,8 +28,11 @@ fn real_main() -> Result<()> {
     match cli.command {
         Commands::Build(args) => build::run_build(args)?,
         Commands::Projects(args) => build::run_projects(args)?,
-        Commands::Setup(args) => setup::run_setup(args)?,
-        Commands::PackSdk(args) => pack_sdk::run_pack_sdk(args)?,
+        Commands::Sdk(args) => match args.command {
+            SdkCommand::Install(a) => sdk_install::run_install(a)?,
+            SdkCommand::Path => sdk_install::run_path()?,
+            SdkCommand::Remove => sdk_install::run_remove()?,
+        },
         Commands::Doctor => doctor::run_doctor()?,
     }
 

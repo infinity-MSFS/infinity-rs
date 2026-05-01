@@ -6,6 +6,9 @@
 // Re-export used by macros so downstream crates don't need a direct `paste` dependency.
 pub use paste as __paste;
 
+#[cfg(feature = "derive")]
+pub use infinity_rs_derive::*;
+
 pub mod abi;
 pub mod sys;
 pub mod types;

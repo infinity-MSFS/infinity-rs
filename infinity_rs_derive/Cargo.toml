@@ -1,0 +1,24 @@
+[package]
+name = "infinity_rs_derive"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Procedural macros for infinity-rs (MSFS gauge/system entry points)."
+license = "MIT"
+repository = "https://github.com/infinity-MSFS/infinity-rs"
+homepage = "https://infinity-simulations.com/docs/developer/getting-started"
+documentation = "https://infinity-simulations.com/docs/developer/getting-started"
+authors = ["cameron_griego@protonmail.com"]
+keywords = ["msfs", "macros", "proc-macro", "flight-simulator"]
+categories = ["development-tools::procedural-macro-helpers"]
+
+
+[lib]
+proc-macro = true
+
+
+[dependencies]
+syn = { version = "2.0", features = ["full"] }
+quote = "1.0"
+proc-macro2 = "1.0"
+paste = "1.0"

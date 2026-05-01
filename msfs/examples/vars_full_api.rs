@@ -11,7 +11,7 @@ use infinity_rs::{
     sys::{FS_OBJECT_ID_USER_AIRCRAFT, FS_OBJECT_ID_USER_CURRENT},
     vars::{AVar, VarParamArray1, empty_param_array},
 };
-use msfs_derive::VarStruct;
+use infinity_rs::VarStruct;
 
 // Control LVars (inputs)
 const L_ENABLED: &str = "L:INFINITY_VARS_DEMO_ENABLED";

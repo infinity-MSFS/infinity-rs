@@ -2,6 +2,20 @@
 name = "infinity-msfs"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.85"
+description = "Build/packaging/util CLI for infinity-rs MSFS projects."
+license = "MIT"
+repository = "https://github.com/infinity-MSFS/infinity-rs"
+homepage = "https://infinity-simulations.com/docs/developer/getting-started"
+documentation = "https://infinity-simulations.com/docs/developer/getting-started"
+authors = ["cameron_griego@protonmail.com"]
+keywords = ["msfs", "build", "cli", "flight-simulator", "wasm"]
+categories = ["command-line-utilities", "development-tools::build-utils"]
+exclude = ["tests/**", "*.png", "*.gif"]
+
+[[bin]]
+name = "infinity-msfs"
+path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4.5", features = ["derive", "env"] }
@@ -13,7 +27,7 @@ anyhow = "1"
 thiserror = "1"
 console = "0.15"
 indicatif = "0.17"
-msfs_sdk = { path = "../msfs_sdk" }
 ureq = "2"
-flate2 = "1"
-tar = "0.4"
+zip = { version = "0.6", default-features = false, features = ["deflate"] }
+msi = "0.10"
+cab = "0.6"

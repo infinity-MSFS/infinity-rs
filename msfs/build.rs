@@ -1,7 +1,7 @@
 ﻿fn main() {
     let wasm = std::env::var("TARGET").unwrap().starts_with("wasm32-");
     let simconnect = std::env::var("CARGO_FEATURE_SIMCONNECT").is_ok();
-    let msfs_sdk = msfs_sdk::msfs_sdk_path().unwrap();
+    let msfs_sdk = infinity_rs_sdk::sdk_path().unwrap();
 
     if wasm {
         unsafe {

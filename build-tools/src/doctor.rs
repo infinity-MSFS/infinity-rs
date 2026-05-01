@@ -5,9 +5,9 @@
 //! happens while running the checks themselves; informational warnings
 //! are surfaced in the output but do not fail the program.
 
+use crate::sdk::{cache_base, current_version};
 use anyhow::Result;
 use console::style;
-use msfs_sdk::{SDK_HEADERS_VERSION, default_sdk_cache_dir};
 use std::{path::PathBuf, process::Command};
 
 #[derive(Clone, Copy)]
@@ -73,7 +73,9 @@ pub fn run_doctor() -> Result<()> {
             .red()
             .bold()
     } else if warnings > 0 {
-        style(format!("ok with {warnings} warning(s)")).yellow().bold()
+        style(format!("ok with {warnings} warning(s)"))
+            .yellow()
+            .bold()
     } else {
         style("all checks passed".to_string()).green().bold()
     };
@@ -167,28 +169,39 @@ fn check_sdk() -> CheckResult {
         };
     }
 
-    let cached = default_sdk_cache_dir().map(|d| d.join(SDK_HEADERS_VERSION));
-    match cached {
-        Some(path) if path.exists() => CheckResult {
-            name: "MSFS SDK",
-            status: Status::Ok,
-            detail: format!("cached headers v{SDK_HEADERS_VERSION} at {}", path.display()),
-            hint: None,
-        },
-        Some(path) => CheckResult {
-            name: "MSFS SDK",
-            status: Status::Fail,
-            detail: format!("no headers found at {}", path.display()),
-            hint: Some("run `infinity-msfs setup` to download them".to_string()),
-        },
-        None => CheckResult {
+    let Some(base) = cache_base() else {
+        return CheckResult {
             name: "MSFS SDK",
             status: Status::Warn,
             detail: "could not resolve a cache directory".to_string(),
-            hint: Some(
-                "set INFINITY_MSFS_SDK_CACHE or MSFS2024_SDK to a valid path".to_string(),
-            ),
-        },
+            hint: Some("set INFINITY_MSFS_SDK_CACHE or MSFS2024_SDK to a valid path".to_string()),
+        };
+    };
+
+    let Some(version) = current_version(&base) else {
+        return CheckResult {
+            name: "MSFS SDK",
+            status: Status::Fail,
+            detail: format!("no SDK installed under {}", base.display()),
+            hint: Some("run `infinity-msfs sdk install`".to_string()),
+        };
+    };
+
+    let path = base.join(&version);
+    if path.exists() {
+        CheckResult {
+            name: "MSFS SDK",
+            status: Status::Ok,
+            detail: format!("v{version} at {}", path.display()),
+            hint: None,
+        }
+    } else {
+        CheckResult {
+            name: "MSFS SDK",
+            status: Status::Fail,
+            detail: format!("current.txt points to missing {}", path.display()),
+            hint: Some("run `infinity-msfs sdk install --force`".to_string()),
+        }
     }
 }
 
@@ -196,7 +209,7 @@ fn check_simconnect_lib() -> CheckResult {
     let sdk_root: Option<PathBuf> = if let Ok(p) = std::env::var("MSFS2024_SDK") {
         Some(PathBuf::from(p))
     } else {
-        default_sdk_cache_dir().map(|d| d.join(SDK_HEADERS_VERSION))
+        cache_base().and_then(|b| current_version(&b).map(|v| b.join(v)))
     };
 
     let Some(root) = sdk_root else {
@@ -217,10 +230,7 @@ fn check_simconnect_lib() -> CheckResult {
             name: "SimConnect lib",
             status: Status::Warn,
             detail: "not present in SDK (only required for native + simconnect builds)".to_string(),
-            hint: Some(
-                "re-run `infinity-msfs setup` to fetch the latest archive, or install the full MSFS SDK"
-                    .to_string(),
-            ),
+            hint: Some("re-run `infinity-msfs sdk install` to fetch the latest SDK".to_string()),
         };
     }
 

@@ -2,7 +2,7 @@ use crate::{
     cargo_meta,
     cli::{BuildArgs, ProjectsArgs},
     config::{BuildConfig, CopyRule, InfinityMsfsToml, PackageBuild, PackageKind},
-    process, scripts, setup, stats,
+    process, scripts, sdk_install, stats,
     ui::{self, BuildOutcome, BuildPhase, BuildUi},
     util,
 };
@@ -34,7 +34,7 @@ impl BuildPlan {
 }
 
 pub fn run_build(args: BuildArgs) -> Result<()> {
-    setup::ensure_sdk_headers()?;
+    sdk_install::ensure_sdk()?;
 
     let root = util::find_project_root()?;
     let config_path = util::config_path(&root);
@@ -208,7 +208,7 @@ fn copy_simconnect_runtime(plan: &BuildPlan) -> Result<usize> {
         return Ok(0);
     }
 
-    let sdk = match msfs_sdk::msfs_sdk_path() {
+    let sdk = match crate::sdk::sdk_path() {
         Ok(p) => PathBuf::from(p),
         Err(_) => return Ok(0),
     };
