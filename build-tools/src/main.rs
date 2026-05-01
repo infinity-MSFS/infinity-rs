@@ -1,4 +1,5 @@
 mod build;
+mod build_js;
 mod cargo_meta;
 mod cli;
 mod config;
@@ -27,6 +28,7 @@ fn real_main() -> Result<()> {
 
     match cli.command {
         Commands::Build(args) => build::run_build(args)?,
+        Commands::Js(args) => build_js::run_js(args)?,
         Commands::Projects(args) => build::run_projects(args)?,
         Commands::Sdk(args) => match args.command {
             SdkCommand::Install(a) => sdk_install::run_install(a)?,

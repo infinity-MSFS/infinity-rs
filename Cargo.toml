@@ -4,5 +4,5 @@ members = [
     "msfs",
     "infinity_rs_sdk",
     "infinity_rs_derive",
-    "build-tools",
 ]
+exclude = ["build-tools"]

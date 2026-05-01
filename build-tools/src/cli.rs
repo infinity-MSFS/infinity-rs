@@ -12,6 +12,9 @@ pub struct Cli {
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     Build(BuildArgs),
+    /// Bundle JS/TS instruments using rolldown and emit MSFS
+    /// package sources. Requires a `[js]` section in `infinity-msfs.toml`.
+    Js(JsArgs),
     #[command(alias = "list-projects")]
     Projects(ProjectsArgs),
     /// Manage the local MSFS 2024 SDK installation.
@@ -80,4 +83,27 @@ pub struct ProjectsArgs {
     /// of each `[[packages]]` entry.
     #[arg(long = "only")]
     pub only: Vec<String>,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct JsArgs {
+    /// Stream subprocess output directly instead of the compact UI.
+    #[arg(short = 'v', long)]
+    pub verbose: bool,
+
+    /// Restrict to instruments whose `name` matches this regex.
+    #[arg(short = 'f', long = "filter")]
+    pub filter: Option<String>,
+
+    /// Minify the bundled JS.
+    #[arg(short = 'm', long)]
+    pub minify: bool,
+
+    /// Skip simulator-package emission (just produce the raw bundle).
+    #[arg(short = 's', long = "skip-simulator-package")]
+    pub skip_simulator_package: bool,
+
+    /// Emit sourcemaps. One of `inline`, `external`, `file`.
+    #[arg(short = 'p', long = "sourcemap")]
+    pub sourcemap: Option<String>,
 }

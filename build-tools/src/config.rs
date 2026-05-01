@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use infinity_build_js::JsBuildConfig;
 use serde::Deserialize;
 use std::{fs, path::Path};
 
@@ -20,6 +21,12 @@ pub struct InfinityMsfsToml {
 
     #[serde(default)]
     pub scripts: ScriptsConfig,
+
+    /// JS/TS instrument bundling config. When present, `build js`
+    /// (or `build all`) will bundle each entry via rolldown and
+    /// emit MSFS package sources alongside the WASM packages.
+    #[serde(default)]
+    pub js: Option<JsBuildConfig>,
 }
 
 #[derive(Debug, Deserialize, Clone)]

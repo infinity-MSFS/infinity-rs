@@ -62,6 +62,29 @@ args = [
   "--enable-nontrapping-float-to-int",
 ]
 
+[js]
+package_name = "infinity-bridge"
+package_dir  = "PackageSources"
+
+[[js.instruments]]
+name  = "visualizer"
+index = "src-visualizer/index.tsx"
+
+[js.instruments.simulator_package]
+type           = "react"
+file_name      = "visualizer"
+is_interactive = true
+imports        = ["/JS/dataStorage.js"]
+
+[[js.instruments]]
+name  = "InfinityBridge"
+index = "src-bridge/Main.res.mjs"
+
+[js.instruments.simulator_package]
+type             = "baseInstrument"
+template_id      = "Infinity-Bridge"
+mount_element_id = "infinity-bridge-gauge"
+
 [scripts]
 pre_build = [
   "cargo fmt --check"
