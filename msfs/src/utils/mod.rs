@@ -80,7 +80,9 @@ fn make_variant(ch: char, arg: FsParamArg) -> Result<FsVarParamVariant, char> {
         }
         ('s', FsParamArg::Str(p)) => {
             var.type_ = eFsVarParamType_FsVarParamTypeString;
-            var.__bindgen_anon_1 = FsVarParamVariant__bindgen_ty_1 { stringValue: p };
+            var.__bindgen_anon_1 = FsVarParamVariant__bindgen_ty_1 {
+                stringValue: p as *mut _,
+            };
         }
         ('i', FsParamArg::Index(x)) => {
             var.type_ = eFsVarParamType_FsVarParamTypeInteger;
