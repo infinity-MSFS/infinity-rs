@@ -4,6 +4,9 @@ use crate::{
 };
 use std::{marker::PhantomData, os::raw::c_void, ptr::NonNull};
 
+/// Named MSFS key events (`KEY_*`) + `trigger_key` helpers.
+pub mod keys;
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct EventId(pub FsEventId);

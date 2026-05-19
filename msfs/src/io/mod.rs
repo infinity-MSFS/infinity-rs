@@ -78,7 +78,7 @@ bitflags::bitflags! {
     }
 }
 
-struct OpenCb(Box<dyn FnOnce(File) + 'static>);
+struct OpenCb(Box<dyn FnOnce(&File) + 'static>);
 
 struct ReadCb(Box<dyn FnOnce(&[u8], i32) + 'static>);
 
@@ -90,7 +90,14 @@ extern "C" fn open_trampoline(file: FsIOFile, user: *mut c_void) {
     }
 
     let cb = unsafe { Box::from_raw(user as *mut OpenCb) };
-    (cb.0)(File(file));
+    // Hand the callback a *borrowed* view of the file. The owning `File` is
+    // the one `open` returned to the caller; it must outlive any async op the
+    // callback queues (e.g. a write). Passing an owning `File` here would
+    // close the handle the instant the callback returns — before the queued
+    // op runs — so we `forget` this view rather than let it close.
+    let view = File(file);
+    (cb.0)(&view);
+    std::mem::forget(view);
 }
 
 extern "C" fn read_trampoline(
@@ -188,9 +195,8 @@ impl File {
             )
         };
         if let Some(e) = IoError::from_raw(code) {
-            unsafe {
-                drop(Box::from_raw(cb));
-            }
+            // Do NOT free `cb` here — see the note in `open`. Once the box has
+            // been handed to the MSFS call, the trampoline owns it.
             return Err(e);
         }
         Ok(())
@@ -214,9 +220,8 @@ impl File {
             )
         };
         if let Some(e) = IoError::from_raw(code) {
-            unsafe {
-                drop(Box::from_raw(cb));
-            }
+            // Do NOT free `cb` here — see the note in `open`. Once the box has
+            // been handed to the MSFS call, the trampoline owns it.
             return Err(e);
         }
         Ok(())
@@ -237,7 +242,11 @@ impl Drop for File {
     }
 }
 
-pub fn open(path: &str, flags: OpenFlags, on_done: impl FnOnce(File) + 'static) -> IoResult<File> {
+pub fn open(
+    path: &str,
+    flags: OpenFlags,
+    on_done: impl FnOnce(&File) + 'static,
+) -> IoResult<File> {
     let path_c = CString::new(path)?;
     let cb = Box::into_raw(Box::new(OpenCb(Box::new(on_done))));
     let raw = unsafe {
@@ -249,9 +258,11 @@ pub fn open(path: &str, flags: OpenFlags, on_done: impl FnOnce(File) + 'static) 
         )
     };
     if raw as u32 == FS_IO_ERROR_FILE {
-        unsafe {
-            drop(Box::from_raw(cb));
-        }
+        // Do NOT free `cb` here. MSFS still drives the completion callback
+        // even when the open fails synchronously, and the trampoline reclaims
+        // and frees the box — freeing it here as well is a use-after-free.
+        // (If MSFS ever fails to call back at all, this leaks one small box,
+        // which is an acceptable trade against a crash.)
         return Err(IoError::FileNotFound);
     }
     Ok(File(raw))
@@ -277,9 +288,11 @@ pub fn open_read(
         )
     };
     if raw as u32 == FS_IO_ERROR_FILE {
-        unsafe {
-            drop(Box::from_raw(cb));
-        }
+        // Do NOT free `cb` here. MSFS still drives the completion callback
+        // even when the open fails synchronously, and the trampoline reclaims
+        // and frees the box — freeing it here as well is a use-after-free.
+        // (If MSFS ever fails to call back at all, this leaks one small box,
+        // which is an acceptable trade against a crash.)
         return Err(IoError::FileNotFound);
     }
     Ok(File(raw))

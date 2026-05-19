@@ -1,6 +1,6 @@
 [package]
 name = "infinity_rs_derive"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2024"
 rust-version = "1.85"
 description = "Procedural macros for infinity-rs (MSFS gauge/system entry points)."

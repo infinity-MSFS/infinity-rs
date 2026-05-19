@@ -31,6 +31,10 @@ pub enum RequestStatus {
 pub struct ReadRequest {
     file: File,
     result: Rc<RefCell<Option<Vec<u8>>>>,
+    /// Buffer MSFS reads into. Kept alive (and un-reallocated) for the whole
+    /// async read by holding it here until the request is dropped.
+    #[allow(dead_code)]
+    buf: Rc<RefCell<Vec<u8>>>,
 }
 
 impl ReadRequest {
@@ -80,6 +84,11 @@ pub struct WriteOutcome {
 pub struct WriteRequest {
     file: File,
     outcome: Rc<RefCell<Option<WriteOutcome>>>,
+    /// Keeps the write buffer alive for the whole async write. MSFS reads
+    /// from the pointer handed to `fsIOWrite` *after* the call returns, so the
+    /// buffer must outlive the operation, not merely the `write` call.
+    #[allow(dead_code)]
+    buf: Rc<Vec<u8>>,
 }
 
 impl WriteRequest {
@@ -114,28 +123,43 @@ impl WriteRequest {
 
 pub fn read(path: &str, on_done: impl FnOnce(&[u8]) + 'static) -> IoResult<ReadRequest> {
     let result: Rc<RefCell<Option<Vec<u8>>>> = Rc::new(RefCell::new(None));
-    let result_clone = Rc::clone(&result);
+    // MSFS reads into this buffer; it must stay alive and not reallocate for
+    // the whole async read, so the ReadRequest keeps an Rc to it.
+    let buf: Rc<RefCell<Vec<u8>>> = Rc::new(RefCell::new(Vec::new()));
 
-    let file = open_read(path, OpenFlags::RDONLY, 0, -1, move |data, _offset| {
-        *result_clone.borrow_mut() = Some(data.to_vec());
-        on_done(data);
+    let result_cb = Rc::clone(&result);
+    let buf_cb = Rc::clone(&buf);
+
+    // Open, then read exactly `file_size` bytes. The combined open+read
+    // (`open_read`) with `bytes_to_read = -1` never completes on MSFS, so we
+    // size the buffer from the opened handle and issue an explicit read.
+    let file = crate::io::open(path, OpenFlags::RDONLY, move |file: &File| {
+        let size = file.file_size() as usize;
+        if size == 0 {
+            // Empty file (or a failed open reporting size 0) — deliver an
+            // empty result rather than issuing a zero-length read.
+            *result_cb.borrow_mut() = Some(Vec::new());
+            on_done(&[]);
+            return;
+        }
+
+        buf_cb.borrow_mut().resize(size, 0);
+        let result_inner = Rc::clone(&result_cb);
+        let mut b = buf_cb.borrow_mut();
+        let _ = file.read(b.as_mut_slice(), 0, size as i32, move |data, _offset| {
+            *result_inner.borrow_mut() = Some(data.to_vec());
+            on_done(data);
+        });
     })?;
 
-    Ok(ReadRequest { file, result })
+    Ok(ReadRequest { file, result, buf })
 }
 
 pub fn read_to_string(
     path: &str,
     on_done: impl FnOnce(Result<&str, std::str::Utf8Error>) + 'static,
 ) -> IoResult<ReadRequest> {
-    let result: Rc<RefCell<Option<Vec<u8>>>> = Rc::new(RefCell::new(None));
-    let result_clone = Rc::clone(&result);
-
-    let file = open_read(path, OpenFlags::RDONLY, 0, -1, move |data, _offset| {
-        *result_clone.borrow_mut() = Some(data.to_vec());
-        on_done(std::str::from_utf8(data));
-    })?;
-    Ok(ReadRequest { file, result })
+    read(path, move |data| on_done(std::str::from_utf8(data)))
 }
 
 pub fn write(path: &str, data: &[u8]) -> IoResult<WriteRequest> {
@@ -149,13 +173,14 @@ pub fn write(path: &str, data: &[u8]) -> IoResult<WriteRequest> {
 
 pub fn append(path: &str, data: &[u8]) -> IoResult<WriteRequest> {
     let outcome: Rc<RefCell<Option<WriteOutcome>>> = Rc::new(RefCell::new(None));
-    let outcome_clone = Rc::clone(&outcome);
-    let data_owned = data.to_vec();
+    let buf: Rc<Vec<u8>> = Rc::new(data.to_vec());
 
+    let outcome_clone = Rc::clone(&outcome);
+    let buf_clone = Rc::clone(&buf);
     let file = crate::io::open(path, OpenFlags::WRONLY | OpenFlags::CREAT, move |file| {
         let offset = file.file_size() as i32;
-        let oc = outcome_clone.clone();
-        let _ = file.write(&data_owned, offset, move |off, written| {
+        let oc = Rc::clone(&outcome_clone);
+        let _ = file.write(&buf_clone, offset, move |off, written| {
             *oc.borrow_mut() = Some(WriteOutcome {
                 byte_offset: off,
                 bytes_written: written,
@@ -163,7 +188,7 @@ pub fn append(path: &str, data: &[u8]) -> IoResult<WriteRequest> {
         });
     })?;
 
-    Ok(WriteRequest { file, outcome })
+    Ok(WriteRequest { file, outcome, buf })
 }
 
 pub fn create_new(path: &str, data: &[u8]) -> IoResult<WriteRequest> {
@@ -235,12 +260,13 @@ impl FileHandle {
 
 fn write_impl(path: &str, data: &[u8], flags: OpenFlags, offset: i32) -> IoResult<WriteRequest> {
     let outcome: Rc<RefCell<Option<WriteOutcome>>> = Rc::new(RefCell::new(None));
-    let outcome_clone = Rc::clone(&outcome);
-    let data_owned = data.to_vec();
+    let buf: Rc<Vec<u8>> = Rc::new(data.to_vec());
 
+    let outcome_clone = Rc::clone(&outcome);
+    let buf_clone = Rc::clone(&buf);
     let file = crate::io::open(path, flags, move |file| {
-        let oc = outcome_clone.clone();
-        let _ = file.write(&data_owned, offset, move |off, written| {
+        let oc = Rc::clone(&outcome_clone);
+        let _ = file.write(&buf_clone, offset, move |off, written| {
             *oc.borrow_mut() = Some(WriteOutcome {
                 byte_offset: off,
                 bytes_written: written,
@@ -248,5 +274,5 @@ fn write_impl(path: &str, data: &[u8], flags: OpenFlags, offset: i32) -> IoResul
         });
     })?;
 
-    Ok(WriteRequest { file, outcome })
+    Ok(WriteRequest { file, outcome, buf })
 }
