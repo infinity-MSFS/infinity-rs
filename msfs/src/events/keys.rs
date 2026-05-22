@@ -50,6 +50,18 @@ key_event_ids! {
     NAV1_RADIO_SWAP = KEY_NAV1_RADIO_SWAP;
     /// `KEY_NAV2_RADIO_SWAP` — swap NAV 2 active/standby.
     NAV2_RADIO_SWAP = KEY_NAV2_RADIO_SWAP;
+    /// `KEY_NAV1_RADIO_SET` — set NAV 1 active frequency (BCD-encoded MHz).
+    NAV1_RADIO_SET = KEY_NAV1_RADIO_SET;
+    /// `KEY_NAV2_RADIO_SET` — set NAV 2 active frequency (BCD-encoded MHz).
+    NAV2_RADIO_SET = KEY_NAV2_RADIO_SET;
+    /// `KEY_KOHLSMAN_SET` — set altimeter Kohlsman setting (mb × 16).
+    KOHLSMAN_SET = KEY_KOHLSMAN_SET;
+    /// `KEY_KOHLSMAN_INC` — increment altimeter Kohlsman setting.
+    KOHLSMAN_INC = KEY_KOHLSMAN_INC;
+    /// `KEY_KOHLSMAN_DEC` — decrement altimeter Kohlsman setting.
+    KOHLSMAN_DEC = KEY_KOHLSMAN_DEC;
+    /// `KEY_XPNDR_IDENT_ON` — trigger transponder IDENT pulse.
+    XPNDR_IDENT_ON = KEY_XPNDR_IDENT_ON;
 }
 
 /// Trigger a key event with a single integer argument — the common case for
