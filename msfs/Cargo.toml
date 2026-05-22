@@ -1,6 +1,6 @@
 [package]
 name = "infinity-rs"
-version = "0.2.3"
+version = "0.2.4"
 edition = "2024"
 rust-version = "1.85"
 description = "Safe, idiomatic Rust bindings for the MSFS 2024 WASM SDK."
