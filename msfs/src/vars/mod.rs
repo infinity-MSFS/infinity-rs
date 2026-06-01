@@ -1,7 +1,9 @@
 ﻿pub mod a_var;
+pub mod e_var;
 pub mod l_var;
 
 pub use a_var::AVar;
+pub use e_var::EVar;
 pub use l_var::LVar;
 
 use crate::sys::*;
