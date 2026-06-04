@@ -16,39 +16,41 @@ pub mod types;
 #[cfg(feature = "simconnect")]
 pub mod simconnect;
 
-// Modules below call into the MSFS WASM host runtime (`nvg*`, `fsIO*`,
-// `fsCommBus*`, `fsRender*`, …). They are gated behind the `wasm` feature
-// (default-on) so native consumers — e.g. SimConnect-only tools that link
-// against this crate — can opt out and avoid pulling unresolved externals.
-#[cfg(feature = "wasm")]
+// Modules below call into the MSFS host runtime (`nvg*`, `fsIO*`,
+// `fsCommBus*`, `fsRender*`, …). They are gated behind the `host-abi` feature
+// (implied by `wasm`, default-on) so native consumers — e.g. a SimConnect-only
+// tool — can opt out and avoid pulling the unresolved externals, while the
+// emulator's native build modes (`native-dynamic` / `native-exe`) opt back in
+// and resolve those symbols against a host shim instead of the MSFS loader.
+#[cfg(feature = "host-abi")]
 pub mod charts;
-#[cfg(feature = "wasm")]
+#[cfg(feature = "host-abi")]
 pub mod comm_bus;
-#[cfg(feature = "wasm")]
+#[cfg(feature = "host-abi")]
 pub mod context;
-#[cfg(feature = "wasm")]
+#[cfg(feature = "host-abi")]
 pub mod events;
-#[cfg(feature = "wasm")]
+#[cfg(feature = "host-abi")]
 pub mod exports;
-#[cfg(feature = "wasm")]
+#[cfg(feature = "host-abi")]
 pub mod flow;
-#[cfg(feature = "wasm")]
+#[cfg(feature = "host-abi")]
 pub mod io;
-#[cfg(feature = "wasm")]
+#[cfg(feature = "host-abi")]
 pub mod map_view;
-#[cfg(feature = "wasm")]
+#[cfg(feature = "host-abi")]
 pub mod modules;
-#[cfg(feature = "wasm")]
+#[cfg(feature = "host-abi")]
 pub mod network;
-#[cfg(feature = "wasm")]
+#[cfg(feature = "host-abi")]
 pub mod nvg;
-#[cfg(feature = "wasm")]
+#[cfg(feature = "host-abi")]
 pub mod planned_route;
-#[cfg(feature = "wasm")]
+#[cfg(feature = "host-abi")]
 pub mod prelude;
-#[cfg(feature = "wasm")]
+#[cfg(feature = "host-abi")]
 pub mod utils;
-#[cfg(feature = "wasm")]
+#[cfg(feature = "host-abi")]
 pub mod vars;
-#[cfg(feature = "wasm")]
+#[cfg(feature = "host-abi")]
 pub mod vfx;

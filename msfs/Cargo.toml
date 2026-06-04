@@ -1,6 +1,6 @@
 [package]
 name = "infinity-rs"
-version = "0.2.5"
+version = "0.2.6"
 edition = "2024"
 rust-version = "1.85"
 description = "Safe, idiomatic Rust bindings for the MSFS 2024 WASM SDK."
@@ -15,12 +15,36 @@ categories = ["api-bindings", "external-ffi-bindings", "simulation"]
 
 [features]
 default = ["wasm", "derive"]
-wasm = []
+
+# `host-abi` makes the MSFS host-runtime modules (`nvg*`, `fsVars*`,
+# `fsCommBus*`, `fsRender*`, …) available. It says nothing about *how* those
+# symbols are resolved — that is the build target's job:
+#
+#   * wasm           — the MSFS loader resolves the imports at module load.
+#   * native-dynamic — a host `.dll` (a real gauge) whose imports are bound to
+#                      the emulator's `msfs_host_shim.lib` at link time and
+#                      resolved by `msfs_host_shim.dll` at load (see infinity-emu).
+#
+# `wasm` (default) implies it, so existing consumers are unaffected.
+host-abi = []
+wasm = ["host-abi"]
+
+# Off-sim emulator gauge build (infinity-emu): a native `.dll` carrying the
+# full host ABI as imports for the shim to satisfy. Changes nothing in
+# infinity-rs codegen beyond enabling `host-abi`; the crate-type swap and the
+# shim link are the build tool's job.
+native-dynamic = ["host-abi"]
+
+# Standalone native SimConnect client executables. These are *not* gauges:
+# no NanoVG, no `fs*` host runtime — just the SimConnect API linked against the
+# real `SimConnect.dll`. Hence it pulls only `simconnect`, never `host-abi`.
+native-exe = ["simconnect"]
+
 simconnect = []
 derive = ["dep:infinity_rs_derive"]
 
 [dependencies]
-infinity_rs_derive = { path = "../infinity_rs_derive", version = "0.2.5", optional = true }
+infinity_rs_derive = { path = "../infinity_rs_derive", version = "0.2.6", optional = true }
 bitflags = "1.3"
 paste = "1.0"
 serde = { version = "1.0", features = ["derive"] }
@@ -28,7 +52,7 @@ serde_json = "1.0"
 
 [build-dependencies]
 bindgen = "0.72"
-infinity_rs_sdk = { path = "../infinity_rs_sdk", version = "0.2.5" }
+infinity_rs_sdk = { path = "../infinity_rs_sdk", version = "0.2.6" }
 cc = "1.0"
 
 [[example]]
