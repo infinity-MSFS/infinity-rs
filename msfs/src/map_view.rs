@@ -101,12 +101,7 @@ impl MapView {
     /// Create a new map view backed by a texture of `width` x `height`.
     ///
     /// Returns `None` if the host failed to allocate a texture.
-    pub fn new(
-        ctx: &Context,
-        width: u32,
-        height: u32,
-        flags: RenderImageFlags,
-    ) -> Option<Self> {
+    pub fn new(ctx: &Context, width: u32, height: u32, flags: RenderImageFlags) -> Option<Self> {
         unsafe { Self::from_fs_context(ctx.fs_context(), width, height, flags) }
     }
 
@@ -186,7 +181,9 @@ impl MapView {
         // `Color` is `#[repr(C)]` with the same field layout as `FsColor`,
         // so the slice can be reinterpreted in-place.
         let ptr = colors.as_ptr() as *mut sys::FsColor;
-        unsafe { sys::fsMapViewSetAltitudeColorList(self.fs_ctx, self.id, ptr, colors.len() as u32) }
+        unsafe {
+            sys::fsMapViewSetAltitudeColorList(self.fs_ctx, self.id, ptr, colors.len() as u32)
+        }
     }
 
     pub fn set_altitude_reference(&self, reference: AltitudeReference) -> bool {
@@ -197,8 +194,21 @@ impl MapView {
         unsafe { sys::fsMapViewSetAltitudeRangeInFeet(self.fs_ctx, self.id, min, max) }
     }
 
-    pub fn set_weather_radar_visibility(&self, visible: bool) -> bool {
-        unsafe { sys::fsMapViewSetWeatherRadarVisibility(self.fs_ctx, self.id, visible) }
+    // -- Weather Radar Settings --
+    pub fn set_weather_radar_bank_limits_radians(&self, min: f32, max: f32) -> bool {
+        unsafe { sys::fsMapViewSetWeatherRadarBankLimitsInRadians(self.fs_ctx, self.id, min, max) }
+    }
+
+    pub fn set_weather_radar_cone_angle_radians(&self, angle: f32) -> bool {
+        unsafe { sys::fsMapViewSetWeatherRadarConeAngleInRadians(self.fs_ctx, self.id, angle) }
+    }
+
+    pub fn set_weather_radar_mode(&self, mode: WeatherRadarMode) -> bool {
+        unsafe { sys::fsMapViewSetWeatherRadarMode(self.fs_ctx, self.id, mode as _) }
+    }
+
+    pub fn set_weather_radar_pitch_limits_radians(&self, min: f32, max: f32) -> bool {
+        unsafe { sys::fsMapViewSetWeatherRadarPitchLimitsInRadians(self.fs_ctx, self.id, min, max) }
     }
 
     pub fn set_weather_radar_rain_colors(&self, colors: &[RainRateColor]) -> bool {
@@ -208,13 +218,25 @@ impl MapView {
         }
     }
 
-    pub fn set_weather_radar_mode(&self, mode: WeatherRadarMode) -> bool {
-        unsafe { sys::fsMapViewSetWeatherRadarMode(self.fs_ctx, self.id, mode as _) }
+    pub fn set_weather_radar_scan_rate(&self, rate: f32) -> bool {
+        unsafe { sys::fsMapViewSetWeatherRadarScanRate(self.fs_ctx, self.id, rate) }
     }
 
-    pub fn set_weather_radar_cone_angle_radians(&self, angle: f32) -> bool {
-        unsafe { sys::fsMapViewSetWeatherRadarConeAngleInRadians(self.fs_ctx, self.id, angle) }
+    pub fn set_weather_radar_stabilization(&self, pitch: bool, bank: bool) -> bool {
+        unsafe { sys::fsMapViewSetWeatherRadarStabilization(self.fs_ctx, self.id, pitch, bank) }
     }
+
+    pub fn set_weather_radar_tilt_radians(&self, pitch: f64, bank: f64, heading: f64) -> bool {
+        unsafe {
+            sys::fsMapViewSetWeatherRadarTiltInRadians(self.fs_ctx, self.id, pitch, bank, heading)
+        }
+    }
+
+    pub fn set_weather_radar_visibility(&self, visible: bool) -> bool {
+        unsafe { sys::fsMapViewSetWeatherRadarVisibility(self.fs_ctx, self.id, visible) }
+    }
+
+    // -- Map Settings --
 
     pub fn set_map_isolines_visibility(&self, visible: bool) -> bool {
         unsafe { sys::fsMapViewSetMapIsolinesVisibility(self.fs_ctx, self.id, visible) }
