@@ -466,6 +466,22 @@ impl NvgContext {
     pub fn delete_image(&self, image: i32) {
         unsafe { sys::nvgDeleteImage(self.raw, image) };
     }
+
+    /// Build an `NVGpaint` sampling an image handle as a textured pattern.
+    /// Mirrors [`MapView::image_pattern`](crate::map_view::MapView::image_pattern)
+    /// for images created via [`create_image_rgba`](Self::create_image_rgba).
+    pub fn image_pattern(
+        &self,
+        ox: f32,
+        oy: f32,
+        ex: f32,
+        ey: f32,
+        angle: f32,
+        image: i32,
+        alpha: f32,
+    ) -> sys::NVGpaint {
+        unsafe { sys::nvgImagePattern(self.raw, ox, oy, ex, ey, angle, image, alpha) }
+    }
 }
 
 // Fonts and Text
